@@ -73,29 +73,26 @@ export default function Connections({
                             </Form>
                         </div>
                     ) : (
-                        <Form
-                            {...mastodon.redirect.form()}
+                        <form
+                            action={mastodon.redirect.url()}
+                            method="post"
                             className="space-y-4"
                         >
-                            {({ processing, errors }) => (
-                                <>
-                                    <div className="space-y-1">
-                                        <Label htmlFor="instance_url">
-                                            Instance URL
-                                        </Label>
-                                        <Input
-                                            id="instance_url"
-                                            name="instance_url"
-                                            placeholder="https://mastodon.social"
-                                        />
-                                        <InputError message={errors.instance_url} />
-                                    </div>
-                                    <Button type="submit" disabled={processing}>
-                                        Connect Mastodon
-                                    </Button>
-                                </>
-                            )}
-                        </Form>
+                            <input type="hidden" name="_token" value={document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content} />
+                            <div className="space-y-1">
+                                <Label htmlFor="instance_url">
+                                    Instance URL
+                                </Label>
+                                <Input
+                                    id="instance_url"
+                                    name="instance_url"
+                                    placeholder="https://mastodon.social"
+                                />
+                            </div>
+                            <Button type="submit">
+                                Connect Mastodon
+                            </Button>
+                        </form>
                     )}
                 </div>
 

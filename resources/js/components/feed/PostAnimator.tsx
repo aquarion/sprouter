@@ -29,6 +29,10 @@ export function PostAnimator({
 			return;
 		}
 
+		// Clear any transform/filter state left on the container by the previous
+		// template so each animation always starts from a clean slate.
+		gsap.set(container, { clearProps: "all" });
+
 		const split = new SplitText(textEl, { type: "words" });
 		if (split.words.length === 0) {
 			onReadyRef.current?.();

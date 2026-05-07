@@ -28,14 +28,13 @@ class MastodonController extends Controller
         $request->validate(['code' => 'required|string']);
 
         $instance = session('mastodon_instance');
-        $clientId = session("mastodon_client_id_{$instance}");
-        $clientSecret = session("mastodon_client_secret_{$instance}");
+        $credentials = $this->oauth->getStoredCredentials($instance);
 
         $result = $this->oauth->exchangeCode(
             instance: $instance,
             code: $request->input('code'),
-            clientId: $clientId,
-            clientSecret: $clientSecret,
+            clientId: $credentials['client_id'],
+            clientSecret: $credentials['client_secret'],
             redirectUri: route('mastodon.callback'),
         );
 

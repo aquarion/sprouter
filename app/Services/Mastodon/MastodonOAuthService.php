@@ -17,10 +17,7 @@ class MastodonOAuthService
             'website' => config('app.url'),
         ])->throw()->json();
 
-        session([
-            "mastodon_client_id_{$instance}" => $response['client_id'],
-            "mastodon_client_secret_{$instance}" => $response['client_secret'],
-        ]);
+        $this->storeCredentials($instance, $response['client_id'], $response['client_secret']);
 
         return "{$instance}/oauth/authorize?".http_build_query([
             'client_id' => $response['client_id'],
@@ -28,6 +25,22 @@ class MastodonOAuthService
             'response_type' => 'code',
             'scope' => self::SCOPES,
         ]);
+    }
+
+    public function storeCredentials(string $instance, string $clientId, string $clientSecret): void
+    {
+        session([
+            "mastodon_client_id_{$instance}" => $clientId,
+            "mastodon_client_secret_{$instance}" => $clientSecret,
+        ]);
+    }
+
+    public function getStoredCredentials(string $instance): array
+    {
+        return [
+            'client_id' => session("mastodon_client_id_{$instance}"),
+            'client_secret' => session("mastodon_client_secret_{$instance}"),
+        ];
     }
 
     public function exchangeCode(

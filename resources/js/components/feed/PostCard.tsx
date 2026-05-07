@@ -1,3 +1,4 @@
+import { Link } from "@inertiajs/react";
 import type { Post } from "@/types/post";
 import { Attribution } from "./Attribution";
 import { MediaBackground } from "./MediaBackground";
@@ -23,7 +24,18 @@ export function PostCard({
 			<MediaBackground media={post.media} />
 
 			<div className="relative z-10 flex flex-1 flex-col p-4">
-				<SourceBadge post={post} />
+				<div className="flex items-center gap-2">
+					<Link
+						href="/dashboard"
+						className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white/60 hover:bg-white/20 hover:text-white"
+						aria-label="Dashboard"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+							<path fillRule="evenodd" d="M9.293 2.293a1 1 0 0 1 1.414 0l7 7A1 1 0 0 1 17 11h-1v6a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6H3a1 1 0 0 1-.707-1.707l7-7Z" clipRule="evenodd" />
+						</svg>
+					</Link>
+					<SourceBadge post={post} />
+				</div>
 				<div className="flex flex-1 items-center justify-center">
 					<PostAnimator post={post} onReady={onReady} />
 				</div>

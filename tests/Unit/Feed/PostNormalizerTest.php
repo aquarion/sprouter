@@ -104,6 +104,23 @@ it('returns empty media array when post has no attachments', function () {
     expect($post['media'])->toBe([]);
 });
 
+it('truncates long urls in post bodies', function () {
+    $long = 'https://example.com/very/long/path/that/exceeds/the/limit/by/quite/a/lot';
+    $status = [
+        'id' => '1',
+        'content' => "<p>Check this out {$long}</p>",
+        'created_at' => '2024-01-15T10:00:00.000Z',
+        'url' => 'https://fosstodon.org/@user/1',
+        'account' => ['display_name' => 'User', 'acct' => 'user', 'avatar' => ''],
+        'media_attachments' => [],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'fosstodon.org');
+
+    expect($post['body'])->toBe('Check this out https://example.com/very/long/path/that…')
+        ->and(mb_strlen('https://example.com/very/long/path/that…'))->toBe(40);
+});
+
 it('uses reblogged content and author for mastodon boosts', function () {
     $status = [
         'id' => '999',

@@ -17,7 +17,7 @@ class PostNormalizer
             'author_name' => $source['account']['display_name'] ?: $source['account']['acct'],
             'author_handle' => "@{$source['account']['acct']}@{$sourceHost}",
             'author_avatar' => $source['account']['avatar'],
-            'body' => trim(html_entity_decode(strip_tags(str_replace(['</p>', '<br>', '<br/>'], ' ', $source['content'])), ENT_QUOTES | ENT_HTML5, 'UTF-8')),
+            'body' => $this->truncateUrls(trim(html_entity_decode(strip_tags(str_replace(['</p>', '<br>', '<br/>'], ' ', $source['content'])), ENT_QUOTES | ENT_HTML5, 'UTF-8'))),
             'media' => $this->normaliseMastodonMedia($source['media_attachments'] ?? []),
             'created_at' => $source['created_at'],
             'original_url' => $source['url'],
@@ -36,7 +36,7 @@ class PostNormalizer
             'author_name' => $author['displayName'] ?: $author['handle'],
             'author_handle' => '@'.$author['handle'],
             'author_avatar' => $author['avatar'] ?? '',
-            'body' => $record['text'],
+            'body' => $this->truncateUrls($record['text']),
             'media' => $this->normaliseBlueskyMedia($post['embed'] ?? null),
             'created_at' => $record['createdAt'],
             'original_url' => $this->blueskyPostUrl($author['handle'], $post['uri']),
@@ -75,6 +75,15 @@ class PostNormalizer
         }
 
         return [];
+    }
+
+    private function truncateUrls(string $text): string
+    {
+        return preg_replace_callback(
+            '/https?:\/\/\S+/',
+            fn ($m) => strlen($m[0]) > 39 ? substr($m[0], 0, 39).'…' : $m[0],
+            $text
+        );
     }
 
     private function blueskyPostUrl(string $handle, string $uri): string

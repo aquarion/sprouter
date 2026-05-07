@@ -37,6 +37,18 @@ export function useFeedQueue({
 		}
 	}, [queue.length, cursor, fetchMore]);
 
+	// If current drained to null but the queue has posts (e.g. fetchMore completed
+	// after the last advance), promote the first queued post without waiting for a
+	// manual advance call.
+	useEffect(() => {
+		if (current !== null) return;
+		setQueue((q) => {
+			if (q.length === 0) return q;
+			setCurrent(q[0]);
+			return q.slice(1);
+		});
+	}, [current]);
+
 	const advance = useCallback(() => {
 		setQueue((q) => {
 			setCurrent(q[0] ?? null);

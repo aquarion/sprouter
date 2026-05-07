@@ -1,7 +1,7 @@
-import { useCallback, useRef, useState } from "react";
-import { flushSync } from "react-dom";
 import { Head } from "@inertiajs/react";
 import { gsap } from "gsap";
+import { useCallback, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { PostCard } from "@/components/feed/PostCard";
 import { useAutoAdvance } from "@/hooks/useAutoAdvance";
 import { useFeedQueue } from "@/hooks/useFeedQueue";
@@ -16,42 +16,44 @@ export default function Feed({
 }) {
 	const { current, advance } = useFeedQueue({ initialPosts, initialCursor });
 	const [paused, setPaused] = useState(false);
+	const [readyForPostId, setReadyForPostId] = useState<string | null>(null);
+	const animationReady = readyForPostId === current?.id;
 	const currentRef = useRef<HTMLDivElement>(null);
-	const transitioningRef = useRef(false);
+	// Stores the timestamp when the transition is expected to finish; prevents
+	// double-firing and self-heals if GSAP ever fails to fire onComplete.
+	const transitionEndRef = useRef(0);
 
 	const handleAdvance = useCallback(() => {
 		const el = currentRef.current;
-		if (transitioningRef.current || !el) return;
-		transitioningRef.current = true;
+		if (!el || Date.now() < transitionEndRef.current) return;
+		transitionEndRef.current = Date.now() + 700;
 
-		gsap.to(el, {
-			scale: 1.3,
-			filter: "blur(8px)",
-			opacity: 0,
-			duration: 0.3,
-			ease: "power2.in",
-			onComplete: () => {
-				// Swap content while screen is dark so zoom-in reveals the new post
-				flushSync(() => advance());
-				gsap.fromTo(
-					el,
-					{ scale: 0.7, filter: "blur(8px)", opacity: 0 },
-					{
-						scale: 1,
-						filter: "blur(0px)",
-						opacity: 1,
-						duration: 0.3,
-						ease: "power2.out",
-						onComplete: () => { transitioningRef.current = false; },
-					},
-				);
-			},
-		});
+		gsap
+			.timeline()
+			.to(el, {
+				scale: 1.3,
+				filter: "blur(8px)",
+				opacity: 0,
+				duration: 0.3,
+				ease: "power2.in",
+			})
+			.call(() => flushSync(() => advance()))
+			.fromTo(
+				el,
+				{ scale: 0.7, filter: "blur(8px)", opacity: 0 },
+				{
+					scale: 1,
+					filter: "blur(0px)",
+					opacity: 1,
+					duration: 0.3,
+					ease: "power2.out",
+				},
+			);
 	}, [advance]);
 
 	const { progress } = useAutoAdvance({
 		duration: 8000,
-		paused,
+		paused: paused || !animationReady,
 		onAdvance: handleAdvance,
 	});
 
@@ -75,6 +77,7 @@ export default function Feed({
 						progress={progress}
 						paused={paused}
 						onTogglePause={() => setPaused((p) => !p)}
+						onReady={() => setReadyForPostId(current.id)}
 					/>
 				</div>
 			</div>

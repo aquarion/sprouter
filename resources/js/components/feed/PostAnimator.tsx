@@ -1,7 +1,7 @@
-import { useRef } from "react";
 import { useGSAP } from "@gsap/react";
 import { gsap } from "gsap";
-import { SplitText, pickTemplate } from "@/lib/animations";
+import { useRef } from "react";
+import { pickTemplate, SplitText } from "@/lib/animations";
 import type { AnimationTemplate } from "@/lib/animations/types";
 import type { Post } from "@/types/post";
 
@@ -9,9 +9,17 @@ gsap.registerPlugin(SplitText);
 
 const lastTemplate = { current: undefined as AnimationTemplate | undefined };
 
-export function PostAnimator({ post }: { post: Post }) {
+export function PostAnimator({
+	post,
+	onReady,
+}: {
+	post: Post;
+	onReady?: () => void;
+}) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const textRef = useRef<HTMLDivElement>(null);
+	const onReadyRef = useRef(onReady);
+	onReadyRef.current = onReady;
 
 	useGSAP(() => {
 		const container = containerRef.current;
@@ -19,18 +27,23 @@ export function PostAnimator({ post }: { post: Post }) {
 		if (!container || !textEl) return;
 
 		const split = new SplitText(textEl, { type: "words" });
-		if (split.words.length === 0) return;
+		if (split.words.length === 0) {
+			onReadyRef.current?.();
+			return;
+		}
 
 		const template = pickTemplate(lastTemplate.current);
 		lastTemplate.current = template;
 
-		const tl = gsap.timeline();
+		const tl = gsap.timeline({ onComplete: () => onReadyRef.current?.() });
 		template(tl, split.words as Element[], container);
 
 		// Don't call split.revert() in cleanup — it writes the old innerHTML back
 		// into the DOM after React has already committed the new post body, causing
 		// the next SplitText to operate on stale content.
-		return () => { tl.kill(); };
+		return () => {
+			tl.kill();
+		};
 	}, [post.id]);
 
 	const body = post.body || post.media[0]?.alt_text || "";

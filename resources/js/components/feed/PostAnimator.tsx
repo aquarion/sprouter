@@ -39,6 +39,7 @@ export function PostAnimator({ post }: { post: Post }) {
 			className="flex h-full w-full items-center justify-center p-8 text-center"
 		>
 			<div
+				key={post.id}
 				ref={textRef}
 				className="text-2xl font-extrabold leading-tight tracking-tight text-white"
 			>

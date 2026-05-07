@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Head } from "@inertiajs/react";
-import { useGSAP } from "@gsap/react";
 import { gsap } from "gsap";
 import { PostCard } from "@/components/feed/PostCard";
 import { useAutoAdvance } from "@/hooks/useAutoAdvance";

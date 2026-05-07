@@ -14,6 +14,15 @@ it("calls onAdvance after the duration", () => {
 	expect(onAdvance).toHaveBeenCalledOnce();
 });
 
+it("calls onAdvance again after each subsequent duration", () => {
+	const onAdvance = vi.fn();
+	renderHook(() =>
+		useAutoAdvance({ duration: 8000, paused: false, onAdvance }),
+	);
+	act(() => vi.advanceTimersByTime(16000));
+	expect(onAdvance).toHaveBeenCalledTimes(2);
+});
+
 it("does not advance while paused", () => {
 	const onAdvance = vi.fn();
 	renderHook(() => useAutoAdvance({ duration: 8000, paused: true, onAdvance }));

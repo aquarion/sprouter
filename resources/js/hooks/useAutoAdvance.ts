@@ -32,7 +32,7 @@ export function useAutoAdvance({
 			setProgress(remaining);
 
 			if (elapsedRef.current >= duration) {
-				clearInterval(interval);
+				elapsedRef.current = 0;
 				onAdvanceRef.current();
 			}
 		}, TICK_MS);

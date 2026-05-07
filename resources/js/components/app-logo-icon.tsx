@@ -1,4 +1,4 @@
-import sprouter from "../../icons/spouter-standard.png";
+import sprouter from "../../icons/sprouter-standard.svg";
 
 export default function AppLogoIcon({
 	className,

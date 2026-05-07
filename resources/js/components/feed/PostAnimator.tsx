@@ -55,12 +55,20 @@ export function PostAnimator({
 			ref={containerRef}
 			className="flex h-full w-full items-center justify-center p-8 text-center"
 		>
-			<div
-				key={post.id}
-				ref={textRef}
-				className="mx-auto max-w-[40ch] text-2xl font-extrabold leading-tight tracking-tight text-white"
-			>
-				{body}
+			<div className="flex flex-col items-center gap-4">
+				{post.reply_to && (
+					<div className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm">
+						<p className="mb-1 font-semibold text-white/50">↩ {post.reply_to.author_handle}</p>
+						<p className="line-clamp-2">{post.reply_to.body}</p>
+					</div>
+				)}
+				<div
+					key={post.id}
+					ref={textRef}
+					className="mx-auto max-w-[40ch] text-2xl font-extrabold leading-tight tracking-tight text-white"
+				>
+					{body}
+				</div>
 			</div>
 		</div>
 	);

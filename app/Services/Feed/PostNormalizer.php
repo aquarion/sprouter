@@ -4,7 +4,7 @@ namespace App\Services\Feed;
 
 class PostNormalizer
 {
-    public function fromMastodon(array $status, string $host): array
+    public function fromMastodon(array $status, string $host, ?array $parentStatus = null): array
     {
         $source = $status['reblog'] ?? $status;
         $sourceHost = isset($status['reblog'])
@@ -21,6 +21,7 @@ class PostNormalizer
             'media' => $this->normaliseMastodonMedia($source['media_attachments'] ?? []),
             'created_at' => $source['created_at'],
             'original_url' => $source['url'],
+            'reply_to' => $this->mastodonReplyTo($parentStatus, $host),
         ];
     }
 
@@ -40,6 +41,37 @@ class PostNormalizer
             'media' => $this->normaliseBlueskyMedia($post['embed'] ?? null),
             'created_at' => $record['createdAt'],
             'original_url' => $this->blueskyPostUrl($author['handle'], $post['uri']),
+            'reply_to' => $this->blueskyReplyTo($feedPost['reply']['parent'] ?? null),
+        ];
+    }
+
+    private function mastodonReplyTo(?array $parent, string $fallbackHost): ?array
+    {
+        if ($parent === null) {
+            return null;
+        }
+
+        $parentHost = parse_url($parent['url'] ?? '', PHP_URL_HOST) ?? $fallbackHost;
+
+        return [
+            'author_handle' => "@{$parent['account']['acct']}@{$parentHost}",
+            'body' => $this->truncateBody(
+                trim(html_entity_decode(strip_tags(str_replace(['</p>', '<br>', '<br/>'], ' ', $parent['content'])), ENT_QUOTES | ENT_HTML5, 'UTF-8'))
+            ),
+        ];
+    }
+
+    private function blueskyReplyTo(?array $parent): ?array
+    {
+        if ($parent === null || ! isset($parent['record']['text'])) {
+            return null;
+        }
+
+        $handle = $parent['author']['handle'] ?? '';
+
+        return [
+            'author_handle' => '@'.$handle,
+            'body' => $this->truncateBody($parent['record']['text']),
         ];
     }
 
@@ -84,6 +116,13 @@ class PostNormalizer
             fn ($m) => strlen($m[0]) > 39 ? substr($m[0], 0, 39).'…' : $m[0],
             $text
         );
+    }
+
+    private function truncateBody(string $text, int $limit = 120): string
+    {
+        $text = $this->truncateUrls($text);
+
+        return mb_strlen($text) > $limit ? mb_substr($text, 0, $limit).'…' : $text;
     }
 
     private function blueskyPostUrl(string $handle, string $uri): string

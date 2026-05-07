@@ -5,6 +5,11 @@ export interface MediaAttachment {
 	alt_text: string | null;
 }
 
+export interface ReplyTo {
+	author_handle: string;
+	body: string;
+}
+
 export interface Post {
 	id: string;
 	source: "mastodon" | "bluesky";
@@ -15,6 +20,7 @@ export interface Post {
 	media: MediaAttachment[];
 	created_at: string;
 	original_url: string;
+	reply_to: ReplyTo | null;
 }
 
 export interface FeedResponse {

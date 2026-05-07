@@ -1,0 +1,23 @@
+export interface MediaAttachment {
+	type: "image" | "video";
+	url: string;
+	preview_url: string;
+	alt_text: string | null;
+}
+
+export interface Post {
+	id: string;
+	source: "mastodon" | "bluesky";
+	author_name: string;
+	author_handle: string;
+	author_avatar: string;
+	body: string;
+	media: MediaAttachment[];
+	created_at: string;
+	original_url: string;
+}
+
+export interface FeedResponse {
+	posts: Post[];
+	next_cursor: string | null;
+}

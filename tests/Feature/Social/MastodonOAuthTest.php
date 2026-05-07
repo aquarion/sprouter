@@ -1,16 +1,13 @@
 <?php
 
 use App\Services\Mastodon\MastodonOAuthService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-
-uses(RefreshDatabase::class);
 
 it('registers a dynamic client and returns an authorize url', function () {
     Http::fake([
         'fosstodon.org/api/v1/apps' => Http::response([
             'client_id' => 'fake-client-id',
-            'client_secret' => 'fake-client-secret', // pragma: allowlist secret
+            'client_secret' => 'fake-client-secret',
         ]),
     ]);
 
@@ -37,7 +34,7 @@ it('exchanges a code for an access token', function () {
         instance: 'https://fosstodon.org',
         code: 'auth-code',
         clientId: 'fake-client-id',
-        clientSecret: 'fake-client-secret', // pragma: allowlist secret
+        clientSecret: 'fake-client-secret',
         redirectUri: 'https://sprouter.test/auth/mastodon/callback',
     );
 

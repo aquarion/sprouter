@@ -50,7 +50,8 @@ class MastodonOAuthService
             ->get("{$instance}/api/v1/accounts/verify_credentials")
             ->throw()->json();
 
-        $host = parse_url($instance, PHP_URL_HOST);
+        $host = parse_url($instance, PHP_URL_HOST)
+            ?: throw new \InvalidArgumentException("Cannot extract host from instance URL: {$instance}");
 
         return [
             'access_token' => $tokenResponse['access_token'],

@@ -15,7 +15,7 @@ class BlueskyController extends Controller
     {
         $request->validate([
             'handle' => 'required|string',
-            'app_password' => 'required|string', // pragma: allowlist secret
+            'app_password' => 'required|string',
         ]);
 
         $result = $this->auth->createSession(

@@ -24,7 +24,10 @@ export function PostAnimator({
 	useGSAP(() => {
 		const container = containerRef.current;
 		const textEl = textRef.current;
-		if (!container || !textEl) return;
+		if (!container || !textEl) {
+			onReadyRef.current?.();
+			return;
+		}
 
 		const split = new SplitText(textEl, { type: "words" });
 		if (split.words.length === 0) {

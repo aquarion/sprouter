@@ -5,6 +5,7 @@ namespace App\Services\Feed;
 use App\Models\User;
 use App\Services\Bluesky\BlueskyFeedService;
 use App\Services\Mastodon\MastodonFeedService;
+use Illuminate\Support\Facades\Log;
 
 class FeedAggregator
 {
@@ -16,30 +17,40 @@ class FeedAggregator
 
     public function fetch(User $user, int $limit = 20, ?string $cursor = null): array
     {
+        $user->loadMissing('socialAccounts');
+
         $cursors = $cursor ? json_decode(base64_decode($cursor), true) : [];
         $posts = collect();
 
         foreach ($user->socialAccounts as $account) {
             $accountCursor = $cursors[$account->id] ?? null;
 
-            if ($account->provider === 'mastodon') {
-                $host = parse_url($account->instance_url, PHP_URL_HOST);
-                $statuses = $this->mastodon->getHomeTimeline($account, $limit, $accountCursor);
-                $normalised = array_map(fn ($s) => $this->normalizer->fromMastodon($s, $host), $statuses);
-                $nextCursor = ! empty($statuses) ? end($statuses)['id'] : null;
-                $posts = $posts->concat($normalised);
-                if ($nextCursor) {
-                    $cursors[$account->id] = $nextCursor;
+            try {
+                if ($account->provider === 'mastodon') {
+                    $host = parse_url($account->instance_url, PHP_URL_HOST);
+                    $statuses = $this->mastodon->getHomeTimeline($account, $limit, $accountCursor);
+                    $normalised = array_map(fn ($s) => $this->normalizer->fromMastodon($s, $host), $statuses);
+                    $nextCursor = ! empty($statuses) ? end($statuses)['id'] : null;
+                    $posts = $posts->concat($normalised);
+                    if ($nextCursor) {
+                        $cursors[$account->id] = $nextCursor;
+                    }
                 }
-            }
 
-            if ($account->provider === 'bluesky') {
-                $result = $this->bluesky->getHomeTimeline($account, $limit, $accountCursor);
-                $normalised = array_map(fn ($p) => $this->normalizer->fromBluesky($p), $result['posts']);
-                $posts = $posts->concat($normalised);
-                if ($result['cursor']) {
-                    $cursors[$account->id] = $result['cursor'];
+                if ($account->provider === 'bluesky') {
+                    $result = $this->bluesky->getHomeTimeline($account, $limit, $accountCursor);
+                    $normalised = array_map(fn ($p) => $this->normalizer->fromBluesky($p), $result['posts']);
+                    $posts = $posts->concat($normalised);
+                    if ($result['cursor']) {
+                        $cursors[$account->id] = $result['cursor'];
+                    }
                 }
+            } catch (\Throwable $e) {
+                Log::warning('Failed to fetch feed for account', [
+                    'account_id' => $account->id,
+                    'provider' => $account->provider,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 

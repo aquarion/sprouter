@@ -13,8 +13,6 @@ class FeedController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $user->load('socialAccounts');
-
         $result = $this->aggregator->fetch($user);
 
         if ($request->wantsJson()) {

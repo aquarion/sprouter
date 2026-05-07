@@ -2,7 +2,10 @@
 
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
+use App\Http\Controllers\Social\BlueskyController;
+use App\Http\Controllers\Social\MastodonController;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', '/settings/profile');
@@ -21,4 +24,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('user-password.update');
 
     Route::inertia('settings/appearance', 'settings/appearance')->name('appearance.edit');
+
+    // Connections settings page
+    Route::get('settings/connections', function () {
+        return Inertia::render('settings/connections', [
+            'connections' => auth()->user()->socialAccounts()
+                ->select('provider', 'handle', 'instance_url')
+                ->get(),
+        ]);
+    })->name('connections.edit');
+
+    // Mastodon OAuth
+    Route::post('auth/mastodon', [MastodonController::class, 'redirect'])->name('mastodon.redirect');
+    Route::get('auth/mastodon/callback', [MastodonController::class, 'callback'])->name('mastodon.callback');
+    Route::delete('auth/mastodon', [MastodonController::class, 'destroy'])->name('mastodon.destroy');
+
+    // Bluesky app password
+    Route::post('auth/bluesky', [BlueskyController::class, 'store'])->name('bluesky.store');
+    Route::delete('auth/bluesky', [BlueskyController::class, 'destroy'])->name('bluesky.destroy');
 });

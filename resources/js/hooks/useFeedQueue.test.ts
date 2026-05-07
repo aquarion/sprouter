@@ -1,0 +1,57 @@
+import { act, renderHook } from "@testing-library/react";
+import axios from "axios";
+import { expect, it, vi } from "vitest";
+import type { Post } from "@/types/post";
+import { useFeedQueue } from "./useFeedQueue";
+
+vi.mock("axios");
+
+const makePost = (id: string): Post => ({
+	id,
+	source: "mastodon",
+	author_name: "Test",
+	author_handle: "@test@example.com",
+	author_avatar: "",
+	body: "hello",
+	media: [],
+	created_at: new Date().toISOString(),
+	original_url: "https://example.com",
+});
+
+it("initialises with provided posts", () => {
+	const posts = [makePost("1"), makePost("2")];
+	const { result } = renderHook(() =>
+		useFeedQueue({ initialPosts: posts, initialCursor: null }),
+	);
+	expect(result.current.queue).toHaveLength(2);
+});
+
+it("dequeues the head of the queue", () => {
+	const posts = [makePost("1"), makePost("2"), makePost("3")];
+	const { result } = renderHook(() =>
+		useFeedQueue({ initialPosts: posts, initialCursor: null }),
+	);
+	act(() => result.current.advance());
+	expect(result.current.current?.id).toBe("2");
+	expect(result.current.queue).toHaveLength(2);
+});
+
+it("fetches more posts when queue drops to 5", async () => {
+	const posts = Array.from({ length: 6 }, (_, i) => makePost(String(i)));
+	const newPosts = [makePost("extra1"), makePost("extra2")];
+
+	vi.mocked(axios.get).mockResolvedValue({
+		data: { posts: newPosts, next_cursor: null },
+	});
+
+	const { result } = renderHook(() =>
+		useFeedQueue({ initialPosts: posts, initialCursor: "cursor123" }),
+	);
+
+	await act(async () => result.current.advance());
+
+	expect(axios.get).toHaveBeenCalledWith("/feed", {
+		params: { cursor: "cursor123" },
+		headers: { Accept: "application/json" },
+	});
+});

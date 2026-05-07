@@ -19,6 +19,8 @@ export function PostAnimator({ post }: { post: Post }) {
 		if (!container || !textEl) return;
 
 		const split = new SplitText(textEl, { type: "words" });
+		if (split.words.length === 0) return () => split.revert();
+
 		const template = pickTemplate(lastTemplate.current);
 		lastTemplate.current = template;
 

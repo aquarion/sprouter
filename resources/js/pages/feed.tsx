@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Head } from "@inertiajs/react";
 import { useGSAP } from "@gsap/react";
 import { gsap } from "gsap";
@@ -20,32 +21,33 @@ export default function Feed({
 	const transitioningRef = useRef(false);
 
 	const handleAdvance = useCallback(() => {
-		if (transitioningRef.current || !currentRef.current) return;
+		const el = currentRef.current;
+		if (transitioningRef.current || !el) return;
 		transitioningRef.current = true;
 
-		const tl = gsap.timeline({
-			onComplete: () => {
-				advance();
-				transitioningRef.current = false;
-				gsap.set(currentRef.current!, {
-					scale: 1,
-					filter: "blur(0px)",
-					opacity: 1,
-				});
-			},
-		});
-
-		tl.to(currentRef.current, {
+		gsap.to(el, {
 			scale: 1.3,
 			filter: "blur(8px)",
 			opacity: 0,
 			duration: 0.3,
 			ease: "power2.in",
-		}).fromTo(
-			currentRef.current,
-			{ scale: 0.7, filter: "blur(8px)", opacity: 0 },
-			{ scale: 1, filter: "blur(0px)", opacity: 1, duration: 0.3, ease: "power2.out" },
-		);
+			onComplete: () => {
+				// Swap content while screen is dark so zoom-in reveals the new post
+				flushSync(() => advance());
+				gsap.fromTo(
+					el,
+					{ scale: 0.7, filter: "blur(8px)", opacity: 0 },
+					{
+						scale: 1,
+						filter: "blur(0px)",
+						opacity: 1,
+						duration: 0.3,
+						ease: "power2.out",
+						onComplete: () => { transitioningRef.current = false; },
+					},
+				);
+			},
+		});
 	}, [advance]);
 
 	const { progress } = useAutoAdvance({

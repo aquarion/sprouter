@@ -41,7 +41,12 @@ export function PostAnimator({
 
 	// Phase 1: split text into lines when body changes
 	useLayoutEffect(() => {
-		if (!body) return;
+		if (!body) {
+			// Media-only post (e.g. a GIF with no caption/alt text): nothing to
+			// animate, but onReady must still fire so the auto-advance timer starts.
+			onReadyRef.current?.();
+			return;
+		}
 		const newLines = splitIntoLines(body);
 		lineRefs.current = new Array(newLines.length).fill(null);
 		setLines(newLines);
@@ -114,7 +119,20 @@ export function PostAnimator({
 		};
 	}, [post.id, fontSizes]);
 
-	if (!body) return null;
+	if (!body) {
+		const firstMedia = post.media[0];
+		if (!firstMedia) return null;
+
+		return (
+			<div className="flex h-full w-full items-center justify-center p-4">
+				<img
+					src={firstMedia.url}
+					alt={firstMedia.alt_text ?? ""}
+					className="max-h-full max-w-full rounded object-contain"
+				/>
+			</div>
+		);
+	}
 
 	const textColor = colors?.text ?? "white";
 

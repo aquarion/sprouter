@@ -10,7 +10,7 @@ class MastodonOAuthService
 
     public function getAuthorizeUrl(string $instance, string $redirectUri): string
     {
-        $response = Http::post("{$instance}/api/v1/apps", [
+        $response = Http::timeout(15)->post("{$instance}/api/v1/apps", [
             'client_name' => 'Sprouter',
             'redirect_uris' => $redirectUri,
             'scopes' => self::SCOPES,
@@ -19,11 +19,15 @@ class MastodonOAuthService
 
         $this->storeCredentials($instance, $response['client_id'], $response['client_secret']);
 
+        $state = bin2hex(random_bytes(16));
+        session(['mastodon_oauth_state' => $state]);
+
         return "{$instance}/oauth/authorize?".http_build_query([
             'client_id' => $response['client_id'],
             'redirect_uri' => $redirectUri,
             'response_type' => 'code',
             'scope' => self::SCOPES,
+            'state' => $state,
         ]);
     }
 
@@ -50,7 +54,7 @@ class MastodonOAuthService
         string $clientSecret,
         string $redirectUri,
     ): array {
-        $tokenResponse = Http::post("{$instance}/oauth/token", [
+        $tokenResponse = Http::timeout(15)->post("{$instance}/oauth/token", [
             'client_id' => $clientId,
             'client_secret' => $clientSecret,
             'redirect_uri' => $redirectUri,
@@ -59,7 +63,7 @@ class MastodonOAuthService
             'scope' => self::SCOPES,
         ])->throw()->json();
 
-        $accountResponse = Http::withToken($tokenResponse['access_token'])
+        $accountResponse = Http::timeout(15)->withToken($tokenResponse['access_token'])
             ->get("{$instance}/api/v1/accounts/verify_credentials")
             ->throw()->json();
 

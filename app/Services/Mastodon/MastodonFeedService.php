@@ -10,7 +10,7 @@ class MastodonFeedService
     public function getStatus(SocialAccount $account, string $id): ?array
     {
         try {
-            return Http::withToken($account->access_token)
+            return Http::timeout(15)->withToken($account->access_token)
                 ->get("{$account->instance_url}/api/v1/statuses/{$id}")
                 ->throw()
                 ->json();
@@ -26,7 +26,7 @@ class MastodonFeedService
             $params['max_id'] = $maxId;
         }
 
-        return Http::withToken($account->access_token)
+        return Http::timeout(15)->withToken($account->access_token)
             ->get("{$account->instance_url}/api/v1/timelines/home", $params)
             ->throw()
             ->json();

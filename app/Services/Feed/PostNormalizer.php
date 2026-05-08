@@ -16,11 +16,11 @@ class PostNormalizer
             'source' => 'mastodon',
             'author_name' => $source['account']['display_name'] ?: $source['account']['acct'],
             'author_handle' => "@{$source['account']['acct']}@{$sourceHost}",
-            'author_avatar' => $source['account']['avatar'],
+            'author_avatar' => $this->safeUrl($source['account']['avatar']),
             'body' => $this->truncateUrls(trim(html_entity_decode(strip_tags(str_replace(['</p>', '<br>', '<br/>'], ' ', $source['content'])), ENT_QUOTES | ENT_HTML5, 'UTF-8'))),
             'media' => $this->normaliseMastodonMedia($source['media_attachments'] ?? []),
             'created_at' => $source['created_at'],
-            'original_url' => $source['url'],
+            'original_url' => $this->safeUrl($source['url']),
             'reply_to' => $this->mastodonReplyTo($parentStatus, $host),
         ];
     }
@@ -36,7 +36,7 @@ class PostNormalizer
             'source' => 'bluesky',
             'author_name' => $author['displayName'] ?: $author['handle'],
             'author_handle' => '@'.$author['handle'],
-            'author_avatar' => $author['avatar'] ?? '',
+            'author_avatar' => $this->safeUrl($author['avatar'] ?? ''),
             'body' => $this->truncateUrls($record['text']),
             'media' => $this->normaliseBlueskyMedia($post['embed'] ?? null),
             'created_at' => $record['createdAt'],
@@ -130,5 +130,16 @@ class PostNormalizer
         $rkey = basename($uri);
 
         return "https://bsky.app/profile/{$handle}/post/{$rkey}";
+    }
+
+    private function safeUrl(?string $url): string
+    {
+        if (! $url) {
+            return '';
+        }
+
+        $scheme = parse_url($url, PHP_URL_SCHEME);
+
+        return in_array($scheme, ['https', 'http'], true) ? $url : '';
     }
 }

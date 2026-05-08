@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SocialAccount;
 use App\Services\Mastodon\MastodonOAuthService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class MastodonController extends Controller
 {
@@ -16,6 +17,9 @@ class MastodonController extends Controller
         $request->validate(['instance_url' => 'required|url']);
 
         $instance = rtrim($request->input('instance_url'), '/');
+
+        $this->validateInstanceUrl($instance);
+
         $redirectUri = route('mastodon.callback');
 
         session(['mastodon_instance' => $instance]);
@@ -25,7 +29,13 @@ class MastodonController extends Controller
 
     public function callback(Request $request)
     {
-        $request->validate(['code' => 'required|string']);
+        $request->validate(['code' => 'required|string', 'state' => 'required|string']);
+
+        $expectedState = session()->pull('mastodon_oauth_state');
+
+        if (! $expectedState || ! hash_equals($expectedState, $request->input('state'))) {
+            abort(422, 'Invalid OAuth state.');
+        }
 
         $instance = session('mastodon_instance');
         $credentials = $this->oauth->getStoredCredentials($instance);
@@ -59,5 +69,21 @@ class MastodonController extends Controller
 
         return redirect()->route('connections.edit')
             ->with('status', 'mastodon-disconnected');
+    }
+
+    private function validateInstanceUrl(string $url): void
+    {
+        $parsed = parse_url($url);
+
+        if (! $parsed || ($parsed['scheme'] ?? '') !== 'https') {
+            throw ValidationException::withMessages(['instance_url' => 'Instance URL must use HTTPS.']);
+        }
+
+        $host = $parsed['host'] ?? '';
+        $ip = gethostbyname($host);
+
+        if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            throw ValidationException::withMessages(['instance_url' => 'Instance URL is not allowed.']);
+        }
     }
 }

@@ -50,8 +50,8 @@ it('saves the mastodon account on callback and redirects', function () {
     $this->app->instance(MastodonOAuthService::class, $service);
 
     $response = $this->actingAs($user)
-        ->withSession(['mastodon_instance' => 'https://fosstodon.org'])
-        ->get('/auth/mastodon/callback?code=authcode');
+        ->withSession(['mastodon_instance' => 'https://fosstodon.org', 'mastodon_oauth_state' => 'teststate'])
+        ->get('/auth/mastodon/callback?code=authcode&state=teststate');
 
     $response->assertRedirect(route('connections.edit'));
     $response->assertSessionHas('status', 'mastodon-connected');
@@ -79,8 +79,8 @@ it('updates an existing mastodon account on re-connect', function () {
     $this->app->instance(MastodonOAuthService::class, $service);
 
     $this->actingAs($user)
-        ->withSession(['mastodon_instance' => 'https://fosstodon.org'])
-        ->get('/auth/mastodon/callback?code=authcode');
+        ->withSession(['mastodon_instance' => 'https://fosstodon.org', 'mastodon_oauth_state' => 'teststate'])
+        ->get('/auth/mastodon/callback?code=authcode&state=teststate');
 
     $this->assertDatabaseCount('social_accounts', 1);
     $this->assertDatabaseHas('social_accounts', ['handle' => '@new@fosstodon.org']);

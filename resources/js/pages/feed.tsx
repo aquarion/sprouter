@@ -1,20 +1,23 @@
 import { Head } from "@inertiajs/react";
 import { gsap } from "gsap";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { PostCard } from "@/components/feed/PostCard";
 import { useAutoAdvance } from "@/hooks/useAutoAdvance";
 import { useFeedQueue } from "@/hooks/useFeedQueue";
+import { registerFeedDebug, setupDebugWindow } from "@/lib/debug";
 import type { Post } from "@/types/post";
 
 export default function Feed({
 	initialPosts,
 	initialCursor,
+	debugEnabled,
 }: {
 	initialPosts: Post[];
 	initialCursor: string | null;
+	debugEnabled: boolean;
 }) {
-	const { current, advance } = useFeedQueue({ initialPosts, initialCursor });
+	const { current, advance, queue } = useFeedQueue({ initialPosts, initialCursor });
 	const [paused, setPaused] = useState(false);
 	const [readyForPostId, setReadyForPostId] = useState<string | null>(null);
 	const animationReady = readyForPostId === current?.id;
@@ -23,9 +26,30 @@ export default function Feed({
 	// double-firing and self-heals if GSAP ever fails to fire onComplete.
 	const transitionEndRef = useRef(0);
 
+	// Initialize debug utilities (only if APP_DEBUG is enabled)
+	useEffect(() => {
+		if (debugEnabled) {
+			(window as any).__APP_DEBUG = true;
+			setupDebugWindow();
+		}
+	}, [debugEnabled]);
+
+	// Register feed state with debug utilities whenever it changes
+	useEffect(() => {
+		registerFeedDebug({
+			current,
+			queue,
+			cursor: initialCursor,
+		});
+	}, [current, queue, initialCursor]);
+
 	const handleAdvance = useCallback(() => {
 		const el = currentRef.current;
-		if (!el || Date.now() < transitionEndRef.current) return;
+
+		if (!el || Date.now() < transitionEndRef.current) {
+return;
+}
+
 		transitionEndRef.current = Date.now() + 700;
 
 		gsap

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\Feed\FeedAggregator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Config;
 use Inertia\Inertia;
 
 class FeedController extends Controller
@@ -22,6 +23,7 @@ class FeedController extends Controller
         return Inertia::render('feed', [
             'initialPosts' => $result['posts'],
             'initialCursor' => $result['next_cursor'],
+            'debugEnabled' => Config::get('app.debug', false),
         ]);
     }
 }

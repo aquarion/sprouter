@@ -104,7 +104,7 @@ it('returns empty media array when post has no attachments', function () {
     expect($post['media'])->toBe([]);
 });
 
-it('truncates long urls in post bodies', function () {
+it('strips urls from post body and exposes first as link_url', function () {
     $long = 'https://example.com/very/long/path/that/exceeds/the/limit/by/quite/a/lot';
     $status = [
         'id' => '1',
@@ -117,8 +117,8 @@ it('truncates long urls in post bodies', function () {
 
     $post = (new PostNormalizer)->fromMastodon($status, 'fosstodon.org');
 
-    expect($post['body'])->toBe('Check this out https://example.com/very/long/path/that…')
-        ->and(mb_strlen('https://example.com/very/long/path/that…'))->toBe(40);
+    expect($post['body'])->toBe('Check this out')
+        ->and($post['link_url'])->toBe($long);
 });
 
 it('uses reblogged content and author for mastodon boosts', function () {
@@ -277,4 +277,69 @@ it('falls back to acct when mastodon display_name is empty', function () {
     $post = (new PostNormalizer)->fromMastodon($status, 'fosstodon.org');
 
     expect($post['author_name'])->toBe('user');
+});
+
+it('extracts link_url from mastodon html anchor tags, skipping mentions and hashtags', function () {
+    $status = [
+        'id' => '1',
+        'content' => '<p>Hey <a href="https://fosstodon.org/@someone" class="u-url mention">@someone</a> see <a href="https://example.com/article" target="_blank">https://example.com/article</a></p>',
+        'created_at' => '2024-01-15T10:00:00.000Z',
+        'url' => 'https://fosstodon.org/@user/1',
+        'account' => ['display_name' => 'User', 'acct' => 'user', 'avatar' => ''],
+        'media_attachments' => [],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'fosstodon.org');
+
+    expect($post['link_url'])->toBe('https://example.com/article')
+        ->and($post['body'])->toBe('Hey @someone see');
+});
+
+it('sets link_url to null when mastodon post has no external links', function () {
+    $status = [
+        'id' => '1',
+        'content' => '<p>Just a plain post</p>',
+        'created_at' => '2024-01-15T10:00:00.000Z',
+        'url' => 'https://fosstodon.org/@user/1',
+        'account' => ['display_name' => 'User', 'acct' => 'user', 'avatar' => ''],
+        'media_attachments' => [],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'fosstodon.org');
+
+    expect($post['link_url'])->toBeNull();
+});
+
+it('extracts link_url from bluesky post text', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => ['text' => 'Check this out https://example.com/article cool', 'createdAt' => '2024-01-15T11:00:00.000Z'],
+            'author' => ['displayName' => 'Alice', 'handle' => 'alice.bsky.social', 'avatar' => ''],
+            'embed' => null,
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['link_url'])->toBe('https://example.com/article')
+        ->and($post['body'])->toBe('Check this out cool');
+});
+
+it('prefers bluesky external embed url over text url', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => ['text' => 'See https://text-url.com', 'createdAt' => '2024-01-15T11:00:00.000Z'],
+            'author' => ['displayName' => 'Alice', 'handle' => 'alice.bsky.social', 'avatar' => ''],
+            'embed' => [
+                '$type' => 'app.bsky.embed.external#view',
+                'external' => ['uri' => 'https://embed-url.com/article', 'title' => 'Article', 'description' => ''],
+            ],
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['link_url'])->toBe('https://embed-url.com/article');
 });

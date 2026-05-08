@@ -25,6 +25,8 @@ class PostNormalizer
             'media' => $this->normaliseMastodonMedia($source['media_attachments'] ?? []),
             'created_at' => $source['created_at'],
             'original_url' => $this->safeUrl($source['url']),
+            'link_url' => $this->extractFirstLinkFromHtml($source['content'])
+                ?? $this->extractFirstLink(html_entity_decode(strip_tags($source['content']), ENT_QUOTES | ENT_HTML5, 'UTF-8')),
             'reply_to' => $this->mastodonReplyTo($parentStatus, $host),
             'quoted_post' => null,
             'boosted_by' => $booster,
@@ -48,10 +50,11 @@ class PostNormalizer
             'author_name' => $author['displayName'] ?: $author['handle'],
             'author_handle' => '@'.$author['handle'],
             'author_avatar' => $this->safeUrl($author['avatar'] ?? ''),
-            'body' => $this->truncateUrls($record['text']),
+            'body' => $this->stripUrls($record['text']),
             'media' => $this->normaliseBlueskyMedia($post['embed'] ?? null),
             'created_at' => $record['createdAt'],
             'original_url' => $this->blueskyPostUrl($author['handle'], $post['uri']),
+            'link_url' => $this->blueskyExternalUrl($post['embed'] ?? null) ?? $this->extractFirstLink($record['text']),
             'reply_to' => $this->blueskyReplyTo($feedPost['reply']['parent'] ?? null),
             'quoted_post' => $this->blueskyQuotedPost($post['embed'] ?? null),
             'boosted_by' => $booster,
@@ -161,7 +164,59 @@ class PostNormalizer
         $text = html_entity_decode(strip_tags($withBreaks), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $text = preg_replace('/\n{3,}/', "\n\n", $text);
 
-        return $this->truncateUrls(trim($text));
+        return $this->stripUrls(trim($text));
+    }
+
+    private function stripUrls(string $text): string
+    {
+        $stripped = preg_replace('/https?:\/\/\S+/', '', $text);
+
+        return trim(preg_replace('/[ \t]{2,}/', ' ', $stripped));
+    }
+
+    private function extractFirstLink(string $text): ?string
+    {
+        preg_match('/https?:\/\/\S+/', $text, $m);
+        if (! isset($m[0])) {
+            return null;
+        }
+        $url = rtrim($m[0], '.,;!?)>');
+
+        return $this->safeUrl($url) ?: null;
+    }
+
+    private function extractFirstLinkFromHtml(string $html): ?string
+    {
+        preg_match_all('/<a\s([^>]*)href="(https?:\/\/[^"#][^"]*)"([^>]*)>/i', $html, $matches, PREG_SET_ORDER);
+        foreach ($matches as $match) {
+            $attrs = $match[1].$match[3];
+            if (preg_match('/\bclass="[^"]*\b(?:mention|hashtag)\b/i', $attrs)) {
+                continue;
+            }
+
+            return $this->safeUrl($match[2]) ?: null;
+        }
+
+        return null;
+    }
+
+    private function blueskyExternalUrl(?array $embed): ?string
+    {
+        if ($embed === null) {
+            return null;
+        }
+        $type = $embed['$type'] ?? '';
+        if ($type === 'app.bsky.embed.external#view') {
+            return $this->safeUrl($embed['external']['uri'] ?? '') ?: null;
+        }
+        if ($type === 'app.bsky.embed.recordWithMedia#view') {
+            $media = $embed['media'] ?? null;
+            if (($media['$type'] ?? '') === 'app.bsky.embed.external#view') {
+                return $this->safeUrl($media['external']['uri'] ?? '') ?: null;
+            }
+        }
+
+        return null;
     }
 
     private function truncateUrls(string $text): string

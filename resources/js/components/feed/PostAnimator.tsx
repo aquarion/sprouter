@@ -158,6 +158,20 @@ export function PostAnimator({
 						<p className="line-clamp-2">{post.quoted_post.body}</p>
 					</div>
 				)}
+				{post.link_url && (() => {
+					let hostname = post.link_url;
+					try { hostname = new URL(post.link_url).hostname; } catch { /* keep raw */ }
+					return (
+						<a
+							href={post.link_url}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm hover:bg-white/20"
+						>
+							<p className="font-semibold text-white/50">🔗 {hostname}</p>
+						</a>
+					);
+				})()}
 				<div
 					key={post.id}
 					ref={textRef}

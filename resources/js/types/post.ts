@@ -25,6 +25,7 @@ export interface Post {
 	media: MediaAttachment[];
 	created_at: string;
 	original_url: string;
+	link_url: string | null;
 	reply_to: ReplyTo | null;
 	quoted_post: QuotedPost | null;
 	boosted_by: string | null;

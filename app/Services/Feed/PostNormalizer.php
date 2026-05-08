@@ -27,6 +27,8 @@ class PostNormalizer
             'original_url' => $this->safeUrl($source['url']),
             'link_url' => $this->extractFirstLinkFromHtml($source['content'])
                 ?? $this->extractFirstLink(html_entity_decode(strip_tags($source['content']), ENT_QUOTES | ENT_HTML5, 'UTF-8')),
+            'link_title' => null,
+            'link_favicon' => null,
             'reply_to' => $this->mastodonReplyTo($parentStatus, $host),
             'quoted_post' => null,
             'boosted_by' => $booster,
@@ -44,6 +46,8 @@ class PostNormalizer
             ? ($reason['by']['displayName'] ?? $reason['by']['handle'] ?? null)
             : null;
 
+        $externalData = $this->blueskyExternalData($post['embed'] ?? null);
+
         return [
             'id' => "bluesky_{$post['uri']}",
             'source' => 'bluesky',
@@ -54,7 +58,9 @@ class PostNormalizer
             'media' => $this->normaliseBlueskyMedia($post['embed'] ?? null),
             'created_at' => $record['createdAt'],
             'original_url' => $this->blueskyPostUrl($author['handle'], $post['uri']),
-            'link_url' => $this->blueskyExternalUrl($post['embed'] ?? null) ?? $this->extractFirstLink($record['text']),
+            'link_url' => $externalData['url'] ?? $this->extractFirstLink($record['text']),
+            'link_title' => $externalData['title'] ?? null,
+            'link_favicon' => $externalData['favicon'] ?? null,
             'reply_to' => $this->blueskyReplyTo($feedPost['reply']['parent'] ?? null),
             'quoted_post' => $this->blueskyQuotedPost($post['embed'] ?? null),
             'boosted_by' => $booster,
@@ -200,23 +206,35 @@ class PostNormalizer
         return null;
     }
 
-    private function blueskyExternalUrl(?array $embed): ?string
+    private function blueskyExternalData(?array $embed): array
     {
         if ($embed === null) {
-            return null;
+            return [];
         }
         $type = $embed['$type'] ?? '';
         if ($type === 'app.bsky.embed.external#view') {
-            return $this->safeUrl($embed['external']['uri'] ?? '') ?: null;
+            $ext = $embed['external'] ?? [];
+
+            return [
+                'url' => $this->safeUrl($ext['uri'] ?? '') ?: null,
+                'title' => $ext['title'] ?? null,
+                'favicon' => $this->safeUrl($ext['thumb'] ?? '') ?: null,
+            ];
         }
         if ($type === 'app.bsky.embed.recordWithMedia#view') {
             $media = $embed['media'] ?? null;
             if (($media['$type'] ?? '') === 'app.bsky.embed.external#view') {
-                return $this->safeUrl($media['external']['uri'] ?? '') ?: null;
+                $ext = $media['external'] ?? [];
+
+                return [
+                    'url' => $this->safeUrl($ext['uri'] ?? '') ?: null,
+                    'title' => $ext['title'] ?? null,
+                    'favicon' => $this->safeUrl($ext['thumb'] ?? '') ?: null,
+                ];
             }
         }
 
-        return null;
+        return [];
     }
 
     private function truncateUrls(string $text): string

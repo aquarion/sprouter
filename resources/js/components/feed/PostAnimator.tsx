@@ -158,20 +158,6 @@ export function PostAnimator({
 						<p className="line-clamp-2">{post.quoted_post.body}</p>
 					</div>
 				)}
-				{post.link_url && (() => {
-					let hostname = post.link_url;
-					try { hostname = new URL(post.link_url).hostname; } catch { /* keep raw */ }
-					return (
-						<a
-							href={post.link_url}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm hover:bg-white/20"
-						>
-							<p className="font-semibold text-white/50">🔗 {hostname}</p>
-						</a>
-					);
-				})()}
 				<div
 					key={post.id}
 					ref={textRef}
@@ -200,8 +186,35 @@ export function PostAnimator({
 							</div>
 						);
 					})}
-				</div>
 			</div>
+			{post.link_url && (() => {
+				let hostname = post.link_url;
+				try { hostname = new URL(post.link_url).hostname; } catch { /* keep raw */ }
+				return (
+					<a
+						href={post.link_url}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm hover:bg-white/20"
+					>
+						<div className="flex items-center gap-3">
+							{post.link_favicon && (
+								<img
+									src={post.link_favicon}
+									alt=""
+									className="h-5 w-5 flex-shrink-0 rounded"
+								/>
+							)}
+							<div className="flex-1 min-w-0">
+								{post.link_title && (
+									<p className="font-semibold text-white/90 truncate">{post.link_title}</p>
+								)}
+								<p className="text-xs text-white/50 truncate">{hostname}</p>
+							</div>
+						</div>
+					</a>
+				);
+			})()}
 		</div>
-	);
+	</div>
 }

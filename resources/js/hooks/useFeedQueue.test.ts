@@ -23,6 +23,8 @@ const makePost = (id: string): Post => ({
 	created_at: new Date().toISOString(),
 	original_url: "https://example.com",
 	link_url: null,
+	link_title: null,
+	link_favicon: null,
 	reply_to: null,
 	quoted_post: null,
 	boosted_by: null,

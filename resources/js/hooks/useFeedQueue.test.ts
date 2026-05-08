@@ -1,3 +1,4 @@
+import { router } from "@inertiajs/react";
 import { act, renderHook } from "@testing-library/react";
 import axios from "axios";
 import { expect, it, vi } from "vitest";
@@ -5,6 +6,11 @@ import type { Post } from "@/types/post";
 import { useFeedQueue } from "./useFeedQueue";
 
 vi.mock("axios");
+vi.mock("@inertiajs/react", () => ({
+	router: {
+		visit: vi.fn(),
+	},
+}));
 
 const makePost = (id: string): Post => ({
 	id,
@@ -58,4 +64,23 @@ it("fetches more posts when queue drops to 5", async () => {
 		params: { cursor: "cursor123" },
 		headers: { Accept: "application/json" },
 	});
+});
+
+it("redirects to login when feed refill gets unauthenticated", async () => {
+	const posts = Array.from({ length: 6 }, (_, i) => makePost(String(i)));
+
+	vi.mocked(axios.isAxiosError).mockReturnValue(true);
+	vi.mocked(axios.get).mockRejectedValue({
+		isAxiosError: true,
+		response: { status: 401 },
+	});
+	vi.mocked(router.visit).mockClear();
+
+	renderHook(() =>
+		useFeedQueue({ initialPosts: posts, initialCursor: "cursor123" }),
+	);
+
+	await act(async () => Promise.resolve());
+
+	expect(router.visit).toHaveBeenCalledWith("/login");
 });

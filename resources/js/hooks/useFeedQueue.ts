@@ -1,3 +1,4 @@
+import { router } from "@inertiajs/react";
 import axios from "axios";
 import { useCallback, useEffect, useReducer, useRef } from "react";
 import type { FeedResponse, Post } from "@/types/post";
@@ -67,6 +68,14 @@ export function useFeedQueue({
 				posts: data.posts,
 				cursor: data.next_cursor,
 			});
+		} catch (error) {
+			const status = axios.isAxiosError(error)
+				? error.response?.status
+				: undefined;
+
+			if (status === 401 || status === 419) {
+				router.visit("/login");
+			}
 		} finally {
 			fetching.current = false;
 		}

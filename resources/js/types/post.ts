@@ -26,6 +26,8 @@ export interface Post {
 	created_at: string;
 	original_url: string;
 	link_url: string | null;
+	link_title: string | null;
+	link_favicon: string | null;
 	reply_to: ReplyTo | null;
 	quoted_post: QuotedPost | null;
 	boosted_by: string | null;

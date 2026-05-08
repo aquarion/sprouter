@@ -23,13 +23,16 @@ class FeedAggregator
         $cursors = $cursor ? json_decode(base64_decode($cursor), true) : [];
         $posts = collect();
 
+        // Fetch configured number of posts from each provider for better proportional representation
+        $perProviderLimit = config('feed.per_provider_limit', 20);
+
         foreach ($user->socialAccounts as $account) {
             $accountCursor = $cursors[$account->id] ?? null;
 
             try {
                 if ($account->provider === 'mastodon') {
                     $host = parse_url($account->instance_url, PHP_URL_HOST);
-                    $statuses = $this->mastodon->getHomeTimeline($account, $limit, $accountCursor);
+                    $statuses = $this->mastodon->getHomeTimeline($account, $perProviderLimit, $accountCursor);
 
                     $parents = $this->fetchMastodonParents($account, $statuses);
 
@@ -45,7 +48,7 @@ class FeedAggregator
                 }
 
                 if ($account->provider === 'bluesky') {
-                    $result = $this->bluesky->getHomeTimeline($account, $limit, $accountCursor);
+                    $result = $this->bluesky->getHomeTimeline($account, $perProviderLimit, $accountCursor);
                     $normalised = array_map(fn ($p) => $this->normalizer->fromBluesky($p), $result['posts']);
                     $posts = $posts->concat($normalised);
                     if ($result['cursor']) {
@@ -61,7 +64,9 @@ class FeedAggregator
             }
         }
 
-        $sorted = $posts->sortByDesc('created_at')->values()->take($limit)->all();
+        // Return configured buffer size to ensure both providers are well-represented
+        $bufferSize = config('feed.buffer_size', 40);
+        $sorted = $posts->sortByDesc('created_at')->values()->take($bufferSize)->all();
         $nextCursor = ! empty($sorted) ? base64_encode(json_encode($cursors)) : null;
 
         return ['posts' => $sorted, 'next_cursor' => $nextCursor];

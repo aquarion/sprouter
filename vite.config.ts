@@ -9,7 +9,16 @@ import { defineConfig } from "vite";
 export default defineConfig({
 	plugins: [
 		laravel({
-			input: ["resources/css/app.css", "resources/js/app.tsx"],
+			input: [
+				"resources/css/app.css",
+				"resources/js/app.tsx",
+				"resources/icons/apple-touch-icon.png",
+				"resources/icons/favicon-96x96.png",
+				"resources/icons/favicon.ico",
+				"resources/icons/favicon.svg",
+				"resources/icons/web-app-manifest-192x192.png",
+				"resources/icons/web-app-manifest-512x512.png",
+			],
 			refresh: true,
 			fonts: [
 				bunny("Instrument Sans", {

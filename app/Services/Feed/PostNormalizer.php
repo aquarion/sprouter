@@ -15,6 +15,12 @@ class PostNormalizer
             ? ($status['account']['display_name'] ?: $status['account']['acct'])
             : null;
 
+        $emojis = $this->buildEmojiMap(array_merge(
+            $source['emojis'] ?? [],
+            $source['account']['emojis'] ?? [],
+            $status['account']['emojis'] ?? [],
+        ));
+
         return [
             'id' => "mastodon_{$status['id']}",
             'source' => 'mastodon',
@@ -32,6 +38,7 @@ class PostNormalizer
             'reply_to' => $this->mastodonReplyTo($parentStatus, $host),
             'quoted_post' => null,
             'boosted_by' => $booster,
+            'emojis' => $emojis,
         ];
     }
 
@@ -64,6 +71,7 @@ class PostNormalizer
             'reply_to' => $this->blueskyReplyTo($feedPost['reply']['parent'] ?? null),
             'quoted_post' => $this->blueskyQuotedPost($post['embed'] ?? null),
             'boosted_by' => $booster,
+            'emojis' => [],
         ];
     }
 
@@ -258,6 +266,22 @@ class PostNormalizer
         $rkey = basename($uri);
 
         return "https://bsky.app/profile/{$handle}/post/{$rkey}";
+    }
+
+    private function buildEmojiMap(array $emojis): array
+    {
+        $map = [];
+
+        foreach ($emojis as $emoji) {
+            $shortcode = $emoji['shortcode'] ?? null;
+            $url = $this->safeUrl($emoji['url'] ?? '');
+
+            if ($shortcode && $url) {
+                $map[$shortcode] = $url;
+            }
+        }
+
+        return $map;
     }
 
     private function safeUrl(?string $url): string

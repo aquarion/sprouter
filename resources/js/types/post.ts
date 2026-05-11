@@ -31,6 +31,7 @@ export interface Post {
 	reply_to: ReplyTo | null;
 	quoted_post: QuotedPost | null;
 	boosted_by: string | null;
+	emojis: Record<string, string>;
 }
 
 export interface FeedResponse {

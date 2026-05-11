@@ -4,6 +4,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { pickTemplate, SplitText } from "@/lib/animations";
 import type { AnimationTemplate } from "@/lib/animations/types";
 import { splitIntoLines } from "@/lib/block-text";
+import { EmojiText } from "@/lib/emoji-text";
 import { postColors } from "@/lib/post-colors";
 import type { PostColors } from "@/lib/post-colors";
 import type { Post } from "@/types/post";
@@ -197,7 +198,7 @@ export function PostAnimator({
 										lineRefs.current[lines.indexOf(line)] = el;
 									}}
 								>
-									{line}
+									<EmojiText text={line} emojis={post.emojis} />
 								</span>
 							</div>
 						);

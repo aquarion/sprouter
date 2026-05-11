@@ -295,6 +295,100 @@ it('extracts link_url from mastodon html anchor tags, skipping mentions and hash
         ->and($post['body'])->toBe('Hey @someone see');
 });
 
+it('substitutes mastodon custom emoji shortcodes with image urls', function () {
+    $status = [
+        'id' => '1',
+        'content' => '<p>hello world</p>',
+        'created_at' => '2024-01-15T10:00:00.000Z',
+        'url' => 'https://fosstodon.org/@user/1',
+        'account' => [
+            'display_name' => 'Test :wave:',
+            'acct' => 'user',
+            'avatar' => '',
+            'emojis' => [
+                ['shortcode' => 'wave', 'url' => 'https://fosstodon.org/emoji/wave.png'],
+            ],
+        ],
+        'media_attachments' => [],
+        'emojis' => [
+            ['shortcode' => 'sprouter', 'url' => 'https://fosstodon.org/emoji/sprouter.png'],
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'fosstodon.org');
+
+    expect($post['emojis'])->toBe([
+        'sprouter' => 'https://fosstodon.org/emoji/sprouter.png',
+        'wave' => 'https://fosstodon.org/emoji/wave.png',
+    ]);
+});
+
+it('ignores emoji with unsafe urls', function () {
+    $status = [
+        'id' => '1',
+        'content' => '<p>hi</p>',
+        'created_at' => '2024-01-15T10:00:00.000Z',
+        'url' => 'https://fosstodon.org/@user/1',
+        'account' => ['display_name' => 'User', 'acct' => 'user', 'avatar' => '', 'emojis' => []],
+        'media_attachments' => [],
+        'emojis' => [
+            ['shortcode' => 'bad', 'url' => 'javascript:alert(1)'],
+            ['shortcode' => 'good', 'url' => 'https://fosstodon.org/emoji/good.png'],
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'fosstodon.org');
+
+    expect($post['emojis'])->toBe(['good' => 'https://fosstodon.org/emoji/good.png']);
+});
+
+it('includes booster account emoji in the map', function () {
+    $status = [
+        'id' => '999',
+        'content' => '',
+        'created_at' => '2024-01-15T12:00:00.000Z',
+        'url' => 'https://fosstodon.org/@booster/999',
+        'account' => [
+            'display_name' => 'Booster :tada:',
+            'acct' => 'booster',
+            'avatar' => '',
+            'emojis' => [
+                ['shortcode' => 'tada', 'url' => 'https://fosstodon.org/emoji/tada.png'],
+            ],
+        ],
+        'media_attachments' => [],
+        'reblog' => [
+            'id' => '456',
+            'content' => '<p>original</p>',
+            'created_at' => '2024-01-14T10:00:00.000Z',
+            'url' => 'https://mastodon.social/@original/456',
+            'account' => ['display_name' => 'Original', 'acct' => 'original', 'avatar' => '', 'emojis' => []],
+            'media_attachments' => [],
+            'emojis' => [],
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'fosstodon.org');
+
+    expect($post['emojis'])->toBe(['tada' => 'https://fosstodon.org/emoji/tada.png'])
+        ->and($post['boosted_by'])->toBe('Booster :tada:');
+});
+
+it('returns empty emojis array for bluesky posts', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => ['text' => 'hello', 'createdAt' => '2024-01-15T11:00:00.000Z'],
+            'author' => ['displayName' => 'Alice', 'handle' => 'alice.bsky.social', 'avatar' => ''],
+            'embed' => null,
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['emojis'])->toBe([]);
+});
+
 it('sets link_url to null when mastodon post has no external links', function () {
     $status = [
         'id' => '1',

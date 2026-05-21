@@ -525,3 +525,79 @@ it('returns null reply_to when mastodon parentStatus is null', function () {
 
     expect($post['reply_to'])->toBeNull();
 });
+
+it('includes author identity and url in bluesky reply_to', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/reply123',
+            'record' => ['text' => 'reply text', 'createdAt' => '2024-01-15T11:00:00.000Z'],
+            'author' => ['displayName' => 'Alice', 'handle' => 'alice.bsky.social', 'avatar' => ''],
+            'embed' => null,
+        ],
+        'reply' => [
+            'parent' => [
+                'uri' => 'at://did:plc:xyz/app.bsky.feed.post/parent456',
+                'record' => ['text' => 'parent body text'],
+                'author' => [
+                    'displayName' => 'Bob',
+                    'handle' => 'bob.bsky.social',
+                    'avatar' => 'https://cdn.bsky.app/bob.jpg',
+                ],
+            ],
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['reply_to'])->toBe([
+        'author_name' => 'Bob',
+        'author_handle' => '@bob.bsky.social',
+        'author_avatar' => 'https://cdn.bsky.app/bob.jpg',
+        'original_url' => 'https://bsky.app/profile/bob.bsky.social/post/parent456',
+        'body' => 'parent body text',
+    ]);
+});
+
+it('falls back to handle when bluesky reply_to parent has no displayName', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => ['text' => 'reply', 'createdAt' => '2024-01-15T11:00:00.000Z'],
+            'author' => ['displayName' => 'Alice', 'handle' => 'alice.bsky.social', 'avatar' => ''],
+            'embed' => null,
+        ],
+        'reply' => [
+            'parent' => [
+                'uri' => 'at://did:plc:xyz/app.bsky.feed.post/abc',
+                'record' => ['text' => 'body'],
+                'author' => ['displayName' => '', 'handle' => 'noname.bsky.social', 'avatar' => ''],
+            ],
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['reply_to']['author_name'])->toBe('noname.bsky.social');
+});
+
+it('returns null reply_to when bluesky parent has no record text', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => ['text' => 'reply', 'createdAt' => '2024-01-15T11:00:00.000Z'],
+            'author' => ['displayName' => 'Alice', 'handle' => 'alice.bsky.social', 'avatar' => ''],
+            'embed' => null,
+        ],
+        'reply' => [
+            'parent' => [
+                'uri' => 'at://did:plc:xyz/app.bsky.feed.post/abc',
+                'record' => [],
+                'author' => ['displayName' => 'Bob', 'handle' => 'bob.bsky.social', 'avatar' => ''],
+            ],
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['reply_to'])->toBeNull();
+});

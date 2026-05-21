@@ -103,7 +103,10 @@ class PostNormalizer
         $handle = $parent['author']['handle'] ?? '';
 
         return [
+            'author_name' => ($parent['author']['displayName'] ?? '') ?: $handle,
             'author_handle' => '@'.$handle,
+            'author_avatar' => $this->safeUrl($parent['author']['avatar'] ?? ''),
+            'original_url' => $this->blueskyPostUrl($handle, $parent['uri'] ?? ''),
             'body' => $this->truncateBody($parent['record']['text']),
         ];
     }

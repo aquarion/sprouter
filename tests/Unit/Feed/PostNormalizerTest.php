@@ -222,7 +222,8 @@ it('sets quoted_post for bluesky record embeds', function () {
                 '$type' => 'app.bsky.embed.record#view',
                 'record' => [
                     '$type' => 'app.bsky.embed.record#viewRecord',
-                    'author' => ['handle' => 'quoted.bsky.social'],
+                    'uri' => 'at://did:plc:xyz/app.bsky.feed.post/quoteid',
+                    'author' => ['displayName' => 'Quoted User', 'handle' => 'quoted.bsky.social', 'avatar' => 'https://cdn.bsky.app/quoted.jpg'],
                     'value' => ['text' => 'quoted body'],
                 ],
             ],
@@ -232,7 +233,10 @@ it('sets quoted_post for bluesky record embeds', function () {
     $post = (new PostNormalizer)->fromBluesky($feedPost);
 
     expect($post['quoted_post'])->toBe([
+        'author_name' => 'Quoted User',
         'author_handle' => '@quoted.bsky.social',
+        'author_avatar' => 'https://cdn.bsky.app/quoted.jpg',
+        'original_url' => 'https://bsky.app/profile/quoted.bsky.social/post/quoteid',
         'body' => 'quoted body',
     ]);
 });
@@ -248,7 +252,8 @@ it('sets quoted_post for bluesky recordWithMedia embeds', function () {
                 'record' => [
                     'record' => [
                         '$type' => 'app.bsky.embed.record#viewRecord',
-                        'author' => ['handle' => 'quoted.bsky.social'],
+                        'uri' => 'at://did:plc:xyz/app.bsky.feed.post/mediaquote',
+                        'author' => ['displayName' => 'Quoted User', 'handle' => 'quoted.bsky.social', 'avatar' => 'https://cdn.bsky.app/quoted.jpg'],
                         'value' => ['text' => 'quoted body with media'],
                     ],
                 ],
@@ -259,9 +264,35 @@ it('sets quoted_post for bluesky recordWithMedia embeds', function () {
     $post = (new PostNormalizer)->fromBluesky($feedPost);
 
     expect($post['quoted_post'])->toBe([
+        'author_name' => 'Quoted User',
         'author_handle' => '@quoted.bsky.social',
+        'author_avatar' => 'https://cdn.bsky.app/quoted.jpg',
+        'original_url' => 'https://bsky.app/profile/quoted.bsky.social/post/mediaquote',
         'body' => 'quoted body with media',
     ]);
+});
+
+it('falls back to handle when bluesky quoted post author has no displayName', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => ['text' => 'post body', 'createdAt' => '2024-01-15T11:00:00.000Z'],
+            'author' => ['displayName' => 'Author', 'handle' => 'author.bsky.social', 'avatar' => ''],
+            'embed' => [
+                '$type' => 'app.bsky.embed.record#view',
+                'record' => [
+                    '$type' => 'app.bsky.embed.record#viewRecord',
+                    'uri' => 'at://did:plc:xyz/app.bsky.feed.post/quoteid',
+                    'author' => ['displayName' => '', 'handle' => 'noname.bsky.social', 'avatar' => ''],
+                    'value' => ['text' => 'body'],
+                ],
+            ],
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['quoted_post']['author_name'])->toBe('noname.bsky.social');
 });
 
 it('falls back to acct when mastodon display_name is empty', function () {

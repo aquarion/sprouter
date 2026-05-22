@@ -14,7 +14,10 @@ export interface ReplyTo {
 }
 
 export interface QuotedPost {
+	author_name: string;
 	author_handle: string;
+	author_avatar: string;
+	original_url: string;
 	body: string;
 }
 

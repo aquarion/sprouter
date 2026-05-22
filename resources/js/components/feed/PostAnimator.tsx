@@ -184,12 +184,23 @@ export function PostAnimator({
 					);
 				})()}
 				{post.quoted_post && (
-					<div className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm">
-						<p className="mb-1 font-semibold text-white/50">
-							❝ {post.quoted_post.author_handle}
-						</p>
-						<p className="line-clamp-2">{post.quoted_post.body}</p>
-					</div>
+					<a
+						href={post.quoted_post.original_url || undefined}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm hover:bg-white/20"
+					>
+						<div className="mb-2 flex items-center gap-1.5">
+							<span className="text-white/40">❝</span>
+							<AuthorChip
+								name={post.quoted_post.author_name}
+								avatar={post.quoted_post.author_avatar}
+								emojis={post.emojis}
+								subtext={post.quoted_post.author_handle}
+							/>
+						</div>
+						<p className="line-clamp-3">{post.quoted_post.body}</p>
+					</a>
 				)}
 				<div
 					key={post.id}

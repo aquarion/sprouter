@@ -21,6 +21,7 @@ export interface Post {
 	author_name: string;
 	author_handle: string;
 	author_avatar: string;
+	author_banner: string | null;
 	body: string;
 	media: MediaAttachment[];
 	created_at: string;

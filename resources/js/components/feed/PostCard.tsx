@@ -21,7 +21,8 @@ export function PostCard({
 	onReady?: () => void;
 }) {
 	const hasMedia = post.media.length > 0;
-	const colors = hasMedia ? null : postColors(post.author_handle);
+	const hasBanner = !hasMedia && !!post.author_banner;
+	const colors = hasMedia || hasBanner ? null : postColors(post.author_handle);
 
 	return (
 		<div
@@ -29,6 +30,16 @@ export function PostCard({
 			style={colors ? { backgroundColor: colors.background } : undefined}
 		>
 			{hasMedia && <MediaBackground media={post.media} />}
+			{hasBanner && (
+				<div className="pointer-events-none absolute inset-0 z-0">
+					<img
+						src={post.author_banner!}
+						alt=""
+						className="h-full w-full object-cover"
+						style={{ opacity: 0.15, filter: "blur(24px)", transform: "scale(1.1)" }}
+					/>
+				</div>
+			)}
 
 			<div className="relative z-10 flex flex-1 flex-col p-4">
 				<div className="flex items-center gap-2">

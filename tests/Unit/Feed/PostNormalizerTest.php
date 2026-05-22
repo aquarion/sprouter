@@ -222,7 +222,8 @@ it('sets quoted_post for bluesky record embeds', function () {
                 '$type' => 'app.bsky.embed.record#view',
                 'record' => [
                     '$type' => 'app.bsky.embed.record#viewRecord',
-                    'author' => ['handle' => 'quoted.bsky.social'],
+                    'uri' => 'at://did:plc:xyz/app.bsky.feed.post/quoteid',
+                    'author' => ['displayName' => 'Quoted User', 'handle' => 'quoted.bsky.social', 'avatar' => 'https://cdn.bsky.app/quoted.jpg'],
                     'value' => ['text' => 'quoted body'],
                 ],
             ],
@@ -232,7 +233,10 @@ it('sets quoted_post for bluesky record embeds', function () {
     $post = (new PostNormalizer)->fromBluesky($feedPost);
 
     expect($post['quoted_post'])->toBe([
+        'author_name' => 'Quoted User',
         'author_handle' => '@quoted.bsky.social',
+        'author_avatar' => 'https://cdn.bsky.app/quoted.jpg',
+        'original_url' => 'https://bsky.app/profile/quoted.bsky.social/post/quoteid',
         'body' => 'quoted body',
     ]);
 });
@@ -248,7 +252,8 @@ it('sets quoted_post for bluesky recordWithMedia embeds', function () {
                 'record' => [
                     'record' => [
                         '$type' => 'app.bsky.embed.record#viewRecord',
-                        'author' => ['handle' => 'quoted.bsky.social'],
+                        'uri' => 'at://did:plc:xyz/app.bsky.feed.post/mediaquote',
+                        'author' => ['displayName' => 'Quoted User', 'handle' => 'quoted.bsky.social', 'avatar' => 'https://cdn.bsky.app/quoted.jpg'],
                         'value' => ['text' => 'quoted body with media'],
                     ],
                 ],
@@ -259,9 +264,35 @@ it('sets quoted_post for bluesky recordWithMedia embeds', function () {
     $post = (new PostNormalizer)->fromBluesky($feedPost);
 
     expect($post['quoted_post'])->toBe([
+        'author_name' => 'Quoted User',
         'author_handle' => '@quoted.bsky.social',
+        'author_avatar' => 'https://cdn.bsky.app/quoted.jpg',
+        'original_url' => 'https://bsky.app/profile/quoted.bsky.social/post/mediaquote',
         'body' => 'quoted body with media',
     ]);
+});
+
+it('falls back to handle when bluesky quoted post author has no displayName', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => ['text' => 'post body', 'createdAt' => '2024-01-15T11:00:00.000Z'],
+            'author' => ['displayName' => 'Author', 'handle' => 'author.bsky.social', 'avatar' => ''],
+            'embed' => [
+                '$type' => 'app.bsky.embed.record#view',
+                'record' => [
+                    '$type' => 'app.bsky.embed.record#viewRecord',
+                    'uri' => 'at://did:plc:xyz/app.bsky.feed.post/quoteid',
+                    'author' => ['displayName' => '', 'handle' => 'noname.bsky.social', 'avatar' => ''],
+                    'value' => ['text' => 'body'],
+                ],
+            ],
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['quoted_post']['author_name'])->toBe('noname.bsky.social');
 });
 
 it('falls back to acct when mastodon display_name is empty', function () {
@@ -506,4 +537,168 @@ it('prefers bluesky external embed url over text url', function () {
     $post = (new PostNormalizer)->fromBluesky($feedPost);
 
     expect($post['link_url'])->toBe('https://embed-url.com/article');
+});
+
+it('includes author identity and url in mastodon reply_to', function () {
+    $parent = [
+        'url' => 'https://mastodon.social/@original/456',
+        'content' => '<p>This is the parent post body</p>',
+        'account' => [
+            'display_name' => 'Original User',
+            'acct' => 'original',
+            'avatar' => 'https://mastodon.social/avatars/original.jpg',
+        ],
+    ];
+
+    $status = [
+        'id' => '789',
+        'content' => '<p>Reply text</p>',
+        'created_at' => '2024-01-15T10:00:00.000Z',
+        'url' => 'https://fosstodon.org/@user/789',
+        'account' => ['display_name' => 'User', 'acct' => 'user', 'avatar' => ''],
+        'media_attachments' => [],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'fosstodon.org', $parent);
+
+    expect($post['reply_to'])->toBe([
+        'author_name' => 'Original User',
+        'author_handle' => '@original@mastodon.social',
+        'author_avatar' => 'https://mastodon.social/avatars/original.jpg',
+        'original_url' => 'https://mastodon.social/@original/456',
+        'body' => 'This is the parent post body',
+    ]);
+});
+
+it('falls back to acct when mastodon reply_to parent has no display_name', function () {
+    $parent = [
+        'url' => 'https://mastodon.social/@noname/1',
+        'content' => '<p>body</p>',
+        'account' => ['display_name' => '', 'acct' => 'noname', 'avatar' => ''],
+    ];
+
+    $status = [
+        'id' => '2',
+        'content' => '<p>reply</p>',
+        'created_at' => '2024-01-15T10:00:00.000Z',
+        'url' => 'https://fosstodon.org/@user/2',
+        'account' => ['display_name' => 'User', 'acct' => 'user', 'avatar' => ''],
+        'media_attachments' => [],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'fosstodon.org', $parent);
+
+    expect($post['reply_to']['author_name'])->toBe('noname');
+});
+
+it('sets mastodon reply_to original_url to empty string when parent url is non-http', function () {
+    $parent = [
+        'url' => 'javascript:alert(1)',
+        'content' => '<p>body</p>',
+        'account' => ['display_name' => 'User', 'acct' => 'user', 'avatar' => ''],
+    ];
+
+    $status = [
+        'id' => '3',
+        'content' => '<p>reply</p>',
+        'created_at' => '2024-01-15T10:00:00.000Z',
+        'url' => 'https://fosstodon.org/@user/3',
+        'account' => ['display_name' => 'User', 'acct' => 'user', 'avatar' => ''],
+        'media_attachments' => [],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'fosstodon.org', $parent);
+
+    expect($post['reply_to']['original_url'])->toBe('');
+});
+
+it('returns null reply_to when mastodon parentStatus is null', function () {
+    $status = [
+        'id' => '4',
+        'content' => '<p>standalone post</p>',
+        'created_at' => '2024-01-15T10:00:00.000Z',
+        'url' => 'https://fosstodon.org/@user/4',
+        'account' => ['display_name' => 'User', 'acct' => 'user', 'avatar' => ''],
+        'media_attachments' => [],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'fosstodon.org');
+
+    expect($post['reply_to'])->toBeNull();
+});
+
+it('includes author identity and url in bluesky reply_to', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/reply123',
+            'record' => ['text' => 'reply text', 'createdAt' => '2024-01-15T11:00:00.000Z'],
+            'author' => ['displayName' => 'Alice', 'handle' => 'alice.bsky.social', 'avatar' => ''],
+            'embed' => null,
+        ],
+        'reply' => [
+            'parent' => [
+                'uri' => 'at://did:plc:xyz/app.bsky.feed.post/parent456',
+                'record' => ['text' => 'parent body text'],
+                'author' => [
+                    'displayName' => 'Bob',
+                    'handle' => 'bob.bsky.social',
+                    'avatar' => 'https://cdn.bsky.app/bob.jpg',
+                ],
+            ],
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['reply_to'])->toBe([
+        'author_name' => 'Bob',
+        'author_handle' => '@bob.bsky.social',
+        'author_avatar' => 'https://cdn.bsky.app/bob.jpg',
+        'original_url' => 'https://bsky.app/profile/bob.bsky.social/post/parent456',
+        'body' => 'parent body text',
+    ]);
+});
+
+it('falls back to handle when bluesky reply_to parent has no displayName', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => ['text' => 'reply', 'createdAt' => '2024-01-15T11:00:00.000Z'],
+            'author' => ['displayName' => 'Alice', 'handle' => 'alice.bsky.social', 'avatar' => ''],
+            'embed' => null,
+        ],
+        'reply' => [
+            'parent' => [
+                'uri' => 'at://did:plc:xyz/app.bsky.feed.post/abc',
+                'record' => ['text' => 'body'],
+                'author' => ['displayName' => '', 'handle' => 'noname.bsky.social', 'avatar' => ''],
+            ],
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['reply_to']['author_name'])->toBe('noname.bsky.social');
+});
+
+it('returns null reply_to when bluesky parent has no record text', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => ['text' => 'reply', 'createdAt' => '2024-01-15T11:00:00.000Z'],
+            'author' => ['displayName' => 'Alice', 'handle' => 'alice.bsky.social', 'avatar' => ''],
+            'embed' => null,
+        ],
+        'reply' => [
+            'parent' => [
+                'uri' => 'at://did:plc:xyz/app.bsky.feed.post/abc',
+                'record' => [],
+                'author' => ['displayName' => 'Bob', 'handle' => 'bob.bsky.social', 'avatar' => ''],
+            ],
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['reply_to'])->toBeNull();
 });

@@ -8,6 +8,7 @@ import { EmojiText } from "@/lib/emoji-text";
 import { postColors } from "@/lib/post-colors";
 import type { PostColors } from "@/lib/post-colors";
 import type { Post } from "@/types/post";
+import { AuthorChip } from "./AuthorChip";
 
 gsap.registerPlugin(SplitText);
 
@@ -159,25 +160,77 @@ export function PostAnimator({
 		>
 			<div className="flex flex-col items-center gap-4">
 				{post.reply_to && (
-					<div className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm">
-						<p className="mb-1 font-semibold text-white/50">
-							↩ {post.reply_to.author_handle}
-						</p>
-						<p className="line-clamp-2">{post.reply_to.body}</p>
-					</div>
+					post.reply_to.original_url ? (
+						<a
+							href={post.reply_to.original_url}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm hover:bg-white/20"
+						>
+							<div className="mb-2 flex items-center gap-1.5">
+								<span className="text-white/40">↩</span>
+								<AuthorChip
+									name={post.reply_to.author_name}
+									avatar={post.reply_to.author_avatar}
+									emojis={post.emojis}
+									subtext={post.reply_to.author_handle}
+								/>
+							</div>
+							<p className="line-clamp-3">{post.reply_to.body}</p>
+						</a>
+					) : (
+						<div className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm">
+							<div className="mb-2 flex items-center gap-1.5">
+								<span className="text-white/40">↩</span>
+								<AuthorChip
+									name={post.reply_to.author_name}
+									avatar={post.reply_to.author_avatar}
+									emojis={post.emojis}
+									subtext={post.reply_to.author_handle}
+								/>
+							</div>
+							<p className="line-clamp-3">{post.reply_to.body}</p>
+						</div>
+					)
 				)}
 				{post.quoted_post && (
-					<div className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm">
-						<p className="mb-1 font-semibold text-white/50">
-							❝ {post.quoted_post.author_handle}
-						</p>
-						<p className="line-clamp-2">{post.quoted_post.body}</p>
-					</div>
+					post.quoted_post.original_url ? (
+						<a
+							href={post.quoted_post.original_url}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm hover:bg-white/20"
+						>
+							<div className="mb-2 flex items-center gap-1.5">
+								<span className="text-white/40">❝</span>
+								<AuthorChip
+									name={post.quoted_post.author_name}
+									avatar={post.quoted_post.author_avatar}
+									emojis={post.emojis}
+									subtext={post.quoted_post.author_handle}
+								/>
+							</div>
+							<p className="line-clamp-3">{post.quoted_post.body}</p>
+						</a>
+					) : (
+						<div className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm">
+							<div className="mb-2 flex items-center gap-1.5">
+								<span className="text-white/40">❝</span>
+								<AuthorChip
+									name={post.quoted_post.author_name}
+									avatar={post.quoted_post.author_avatar}
+									emojis={post.emojis}
+									subtext={post.quoted_post.author_handle}
+								/>
+							</div>
+							<p className="line-clamp-3">{post.quoted_post.body}</p>
+						</div>
+					)
 				)}
 				<div
 					key={post.id}
 					ref={textRef}
-					className="w-full font-extrabold leading-none tracking-tight"
+					className={`w-full font-extrabold leading-none tracking-tight${post.reply_to || post.quoted_post ? " min-w-[40ch]" : ""}`}
 					style={{ visibility: fontSizes ? "visible" : "hidden", color: textColor }}
 				>
 					{lines.map((line) => {

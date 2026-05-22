@@ -86,7 +86,10 @@ class PostNormalizer
         $parentHost = parse_url($parent['url'] ?? '', PHP_URL_HOST) ?? $fallbackHost;
 
         return [
+            'author_name' => $parent['account']['display_name'] ?: $parent['account']['acct'],
             'author_handle' => "@{$parent['account']['acct']}@{$parentHost}",
+            'author_avatar' => $this->safeUrl($parent['account']['avatar'] ?? ''),
+            'original_url' => $this->safeUrl($parent['url'] ?? ''),
             'body' => $this->truncateBody(
                 $this->extractBody($parent['content'])
             ),
@@ -102,7 +105,10 @@ class PostNormalizer
         $handle = $parent['author']['handle'] ?? '';
 
         return [
+            'author_name' => ($parent['author']['displayName'] ?? '') ?: $handle,
             'author_handle' => '@'.$handle,
+            'author_avatar' => $this->safeUrl($parent['author']['avatar'] ?? ''),
+            'original_url' => $this->blueskyPostUrl($handle, $parent['uri'] ?? ''),
             'body' => $this->truncateBody($parent['record']['text']),
         ];
     }
@@ -135,7 +141,10 @@ class PostNormalizer
         }
 
         return [
+            'author_name' => ($record['author']['displayName'] ?? '') ?: $handle,
             'author_handle' => '@'.$handle,
+            'author_avatar' => $this->safeUrl($record['author']['avatar'] ?? ''),
+            'original_url' => $this->blueskyPostUrl($handle, $record['uri'] ?? ''),
             'body' => $this->truncateBody($text),
         ];
     }

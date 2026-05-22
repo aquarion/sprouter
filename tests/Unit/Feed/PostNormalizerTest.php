@@ -374,6 +374,76 @@ it('includes booster account emoji in the map', function () {
         ->and($post['boosted_by'])->toBe('Booster :tada:');
 });
 
+it('includes author_banner from mastodon account header', function () {
+    $status = [
+        'id' => '1',
+        'content' => '<p>hi</p>',
+        'created_at' => '2024-01-15T10:00:00.000Z',
+        'url' => 'https://fosstodon.org/@user/1',
+        'account' => [
+            'display_name' => 'User',
+            'acct' => 'user',
+            'avatar' => 'https://fosstodon.org/avatars/user.jpg',
+            'header' => 'https://fosstodon.org/headers/user.jpg',
+        ],
+        'media_attachments' => [],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'fosstodon.org');
+
+    expect($post['author_banner'])->toBe('https://fosstodon.org/headers/user.jpg');
+});
+
+it('sets author_banner to null when mastodon account has no header', function () {
+    $status = [
+        'id' => '1',
+        'content' => '<p>hi</p>',
+        'created_at' => '2024-01-15T10:00:00.000Z',
+        'url' => 'https://fosstodon.org/@user/1',
+        'account' => ['display_name' => 'User', 'acct' => 'user', 'avatar' => ''],
+        'media_attachments' => [],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'fosstodon.org');
+
+    expect($post['author_banner'])->toBeNull();
+});
+
+it('includes author_banner from bluesky author banner', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => ['text' => 'hello', 'createdAt' => '2024-01-15T11:00:00.000Z'],
+            'author' => [
+                'displayName' => 'Alice',
+                'handle' => 'alice.bsky.social',
+                'avatar' => 'https://cdn.bsky.app/avatar.jpg',
+                'banner' => 'https://cdn.bsky.app/banner.jpg',
+            ],
+            'embed' => null,
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['author_banner'])->toBe('https://cdn.bsky.app/banner.jpg');
+});
+
+it('sets author_banner to null when bluesky author has no banner', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => ['text' => 'hello', 'createdAt' => '2024-01-15T11:00:00.000Z'],
+            'author' => ['displayName' => 'Alice', 'handle' => 'alice.bsky.social', 'avatar' => ''],
+            'embed' => null,
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['author_banner'])->toBeNull();
+});
+
 it('returns empty emojis array for bluesky posts', function () {
     $feedPost = [
         'post' => [

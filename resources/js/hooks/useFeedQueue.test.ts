@@ -18,6 +18,7 @@ const makePost = (id: string): Post => ({
 	author_name: "Test",
 	author_handle: "@test@example.com",
 	author_avatar: "",
+	author_banner: null,
 	body: "hello",
 	media: [],
 	created_at: new Date().toISOString(),
@@ -28,6 +29,7 @@ const makePost = (id: string): Post => ({
 	reply_to: null,
 	quoted_post: null,
 	boosted_by: null,
+	emojis: {},
 });
 
 it("initialises with provided posts", () => {

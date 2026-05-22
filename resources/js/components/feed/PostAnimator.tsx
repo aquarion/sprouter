@@ -159,25 +159,30 @@ export function PostAnimator({
 			className="flex h-full w-full items-center justify-center p-8 text-center"
 		>
 			<div className="flex flex-col items-center gap-4">
-				{post.reply_to && (
-					<a
-						href={post.reply_to.original_url}
-						target="_blank"
-						rel="noopener noreferrer"
-						className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm hover:bg-white/20"
-					>
-						<div className="mb-2 flex items-center gap-1.5">
-							<span className="text-white/40">↩</span>
-							<AuthorChip
-								name={post.reply_to.author_name}
-								avatar={post.reply_to.author_avatar}
-								emojis={post.emojis}
-								subtext={post.reply_to.author_handle}
-							/>
-						</div>
-						<p className="line-clamp-3">{post.reply_to.body}</p>
-					</a>
-				)}
+				{post.reply_to && (() => {
+					const hasLink = Boolean(post.reply_to!.original_url);
+					const Tag = hasLink ? 'a' : 'div';
+					const linkProps = hasLink
+						? { href: post.reply_to!.original_url, target: '_blank' as const, rel: 'noopener noreferrer' }
+						: {};
+					return (
+						<Tag
+							{...linkProps}
+							className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm hover:bg-white/20"
+						>
+							<div className="mb-2 flex items-center gap-1.5">
+								<span className="text-white/40">↩</span>
+								<AuthorChip
+									name={post.reply_to!.author_name}
+									avatar={post.reply_to!.author_avatar}
+									emojis={post.emojis}
+									subtext={post.reply_to!.author_handle}
+								/>
+							</div>
+							<p className="line-clamp-3">{post.reply_to!.body}</p>
+						</Tag>
+					);
+				})()}
 				{post.quoted_post && (
 					<div className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm">
 						<p className="mb-1 font-semibold text-white/50">

@@ -1,4 +1,4 @@
-function balanceParagraph(text: string, minLines = 1): string[] {
+function balanceParagraph(text: string, minLines: number): string[] {
 	const words = text.split(/\s+/).filter(Boolean);
 
 	if (words.length === 0) {
@@ -29,17 +29,34 @@ function balanceParagraph(text: string, minLines = 1): string[] {
 	return lines;
 }
 
-export function splitIntoLines(text: string): string[] {
+export function splitIntoLinesWithBoundaries(text: string): {
+	lines: string[];
+	paragraphStarts: Set<number>;
+} {
 	const paragraphs = text.split("\n").filter(Boolean);
 
 	if (paragraphs.length === 0) {
-		return [];
+		return { lines: [], paragraphStarts: new Set() };
 	}
 
 	// Single-paragraph posts keep the minimum-2-lines visual balance.
 	// Multi-paragraph posts allow 1 line per paragraph so short paragraphs
 	// don't force excess lines that make the block tall and thin.
 	const minLines = paragraphs.length === 1 ? 2 : 1;
+	const lines: string[] = [];
+	const paragraphStarts = new Set<number>();
 
-	return paragraphs.flatMap((p) => balanceParagraph(p, minLines));
+	for (let i = 0; i < paragraphs.length; i++) {
+		if (i > 0) {
+			paragraphStarts.add(lines.length);
+		}
+
+		lines.push(...balanceParagraph(paragraphs[i], minLines));
+	}
+
+	return { lines, paragraphStarts };
+}
+
+export function splitIntoLines(text: string): string[] {
+	return splitIntoLinesWithBoundaries(text).lines;
 }

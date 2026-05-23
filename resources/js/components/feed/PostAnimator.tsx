@@ -3,7 +3,7 @@ import { gsap } from "gsap";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { pickTemplate, SplitText } from "@/lib/animations";
 import type { AnimationTemplate } from "@/lib/animations/types";
-import { splitIntoLines } from "@/lib/block-text";
+import { splitIntoLinesWithBoundaries } from "@/lib/block-text";
 import { EmojiText } from "@/lib/emoji-text";
 import type { PostColors } from "@/lib/post-colors";
 import { postColors } from "@/lib/post-colors";
@@ -15,6 +15,68 @@ gsap.registerPlugin(SplitText);
 const lastTemplate = { current: undefined as AnimationTemplate | undefined };
 const BASE_FONT_SIZE = 40;
 const LINE_HEIGHT = 1.1;
+const PANEL_CLASS =
+	"max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm";
+
+function ContextPanel({
+	icon,
+	author_name,
+	author_avatar,
+	author_handle,
+	emojis,
+	body,
+	original_url,
+}: {
+	icon: string;
+	author_name: string;
+	author_avatar: string;
+	author_handle: string;
+	emojis: Record<string, string>;
+	body: string;
+	original_url: string;
+}) {
+	const content = (
+		<>
+			<div className="mb-2 flex items-center gap-1.5">
+				<span className="text-white/40">{icon}</span>
+				<AuthorChip name={author_name} avatar={author_avatar} emojis={emojis} subtext={author_handle} />
+			</div>
+			<p className="whitespace-pre-wrap">{body}</p>
+		</>
+	);
+
+	if (original_url) {
+		return (
+			<a href={original_url} target="_blank" rel="noopener noreferrer" className={`${PANEL_CLASS} hover:bg-white/20`}>
+				{content}
+			</a>
+		);
+	}
+
+	return <div className={PANEL_CLASS}>{content}</div>;
+}
+
+function LinkCard({ url, title, favicon }: { url: string; title: string | null; favicon: string | null }) {
+	let hostname = url;
+
+	try {
+		hostname = new URL(url).hostname;
+	} catch {
+		/* keep raw */
+	}
+
+	return (
+		<a href={url} target="_blank" rel="noopener noreferrer" className={`${PANEL_CLASS} hover:bg-white/20`}>
+			<div className="flex items-center gap-3">
+				{favicon && <img src={favicon} alt="" className="h-5 w-5 flex-shrink-0 rounded" />}
+				<div className="min-w-0 flex-1">
+					{title && <p className="truncate font-semibold text-white/90">{title}</p>}
+					<p className="truncate text-xs text-white/50">{hostname}</p>
+				</div>
+			</div>
+		</a>
+	);
+}
 
 export function PostAnimator({
 	post,
@@ -47,21 +109,13 @@ export function PostAnimator({
 	);
 	const body = paragraphs.join("\n");
 
-	// Derive lines synchronously — splitIntoLines is pure, no DOM access needed.
-	const lines = useMemo(() => (body ? splitIntoLines(body) : []), [body]);
-
-	// Track which line indices start a new paragraph (for visual spacing).
-	const paragraphStartLines = useMemo(() => {
-		if (paragraphs.length <= 1) return new Set<number>();
-		const starts = new Set<number>();
-		let lineIdx = 0;
-		for (let i = 0; i < paragraphs.length; i++) {
-			const paraLines = splitIntoLines(paragraphs[i]);
-			if (i > 0) starts.add(lineIdx);
-			lineIdx += paraLines.length;
-		}
-		return starts;
-	}, [paragraphs]);
+	const { lines, paragraphStarts } = useMemo(
+		() =>
+			body
+				? splitIntoLinesWithBoundaries(body)
+				: { lines: [] as string[], paragraphStarts: new Set<number>() },
+		[body],
+	);
 
 	// Font sizes are only valid for the current body; treat as null when body changes.
 	const fontSizes = fontSizeState?.body === body ? fontSizeState.sizes : null;
@@ -88,21 +142,26 @@ export function PostAnimator({
 		const { width, height } = containerRef.current.getBoundingClientRect();
 		const targetWidth = width * 0.9;
 
-		let sizes = els.map((el) => {
-			const w = el?.getBoundingClientRect().width ?? 0;
+		const widths = els.map((el) => el?.getBoundingClientRect().width ?? 0);
+		let sizes = widths.map((w) => (w > 0 ? BASE_FONT_SIZE * (targetWidth / w) : BASE_FONT_SIZE));
 
-			return w > 0 ? BASE_FONT_SIZE * (targetWidth / w) : BASE_FONT_SIZE;
-		});
-
-		// For multi-paragraph posts, cap per-line sizes at 2× the minimum (the size
-		// for the widest line). Without this, a short paragraph produces a massive
-		// font that dominates the height budget and leaves narrow text after scaling.
-		if (paragraphStartLines.size > 0) {
-			const minSize = Math.min(...sizes);
-			sizes = sizes.map((s) => Math.min(s, minSize * 2));
+		// For multi-paragraph posts, limit cross-paragraph size disparity while
+		// preserving within-paragraph variation (each line still fills its width).
+		// Strategy: find each paragraph's min size (its widest line = most constrained),
+		// then scale down any paragraph whose min exceeds 2× the global paragraph min.
+		if (paragraphStarts.size > 0) {
+			const boundaries = [0, ...[...paragraphStarts].sort((a, b) => a - b), sizes.length];
+			const paraMins = boundaries.slice(0, -1).map((start, i) =>
+				Math.min(...sizes.slice(start, boundaries[i + 1])),
+			);
+			const globalMin = Math.min(...paraMins);
+			sizes = sizes.map((s, lineIdx) => {
+				const p = boundaries.findLastIndex((b) => lineIdx >= b);
+				return s * Math.min(1, (globalMin * 2) / paraMins[p]);
+			});
 		}
 
-		const gapHeight = [...paragraphStartLines].reduce((sum, idx) => sum + (sizes[idx] ?? 0) * 0.5, 0);
+		const gapHeight = [...paragraphStarts].reduce((sum, idx) => sum + (sizes[idx] ?? 0) * 0.5, 0);
 		const totalHeight = sizes.reduce((sum, s) => sum + s * LINE_HEIGHT, 0) + gapHeight;
 		const heightBudget = height * 0.45;
 
@@ -112,7 +171,7 @@ export function PostAnimator({
 		}
 
 		setFontSizeState({ body, sizes });
-	}, [lines, body, paragraphStartLines]);
+	}, [lines, body, paragraphStarts]);
 
 	// Phase 3: run GSAP animation once font sizes are applied
 	useGSAP(() => {
@@ -186,72 +245,26 @@ export function PostAnimator({
 		>
 			<div className="flex flex-col items-center gap-4">
 				{post.reply_to && (
-					post.reply_to.original_url ? (
-						<a
-							href={post.reply_to.original_url}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm hover:bg-white/20"
-						>
-							<div className="mb-2 flex items-center gap-1.5">
-								<span className="text-white/40">↩</span>
-								<AuthorChip
-									name={post.reply_to.author_name}
-									avatar={post.reply_to.author_avatar}
-									emojis={post.emojis}
-									subtext={post.reply_to.author_handle}
-								/>
-							</div>
-							<p className="whitespace-pre-wrap">{post.reply_to.body}</p>
-						</a>
-					) : (
-						<div className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm">
-							<div className="mb-2 flex items-center gap-1.5">
-								<span className="text-white/40">↩</span>
-								<AuthorChip
-									name={post.reply_to.author_name}
-									avatar={post.reply_to.author_avatar}
-									emojis={post.emojis}
-									subtext={post.reply_to.author_handle}
-								/>
-							</div>
-							<p className="whitespace-pre-wrap">{post.reply_to.body}</p>
-						</div>
-					)
+					<ContextPanel
+						icon="↩"
+						author_name={post.reply_to.author_name}
+						author_avatar={post.reply_to.author_avatar}
+						author_handle={post.reply_to.author_handle}
+						emojis={post.emojis}
+						body={post.reply_to.body}
+						original_url={post.reply_to.original_url}
+					/>
 				)}
 				{post.quoted_post && (
-					post.quoted_post.original_url ? (
-						<a
-							href={post.quoted_post.original_url}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm hover:bg-white/20"
-						>
-							<div className="mb-2 flex items-center gap-1.5">
-								<span className="text-white/40">❝</span>
-								<AuthorChip
-									name={post.quoted_post.author_name}
-									avatar={post.quoted_post.author_avatar}
-									emojis={post.emojis}
-									subtext={post.quoted_post.author_handle}
-								/>
-							</div>
-							<p className="whitespace-pre-wrap">{post.quoted_post.body}</p>
-						</a>
-					) : (
-						<div className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm">
-							<div className="mb-2 flex items-center gap-1.5">
-								<span className="text-white/40">❝</span>
-								<AuthorChip
-									name={post.quoted_post.author_name}
-									avatar={post.quoted_post.author_avatar}
-									emojis={post.emojis}
-									subtext={post.quoted_post.author_handle}
-								/>
-							</div>
-							<p className="whitespace-pre-wrap">{post.quoted_post.body}</p>
-						</div>
-					)
+					<ContextPanel
+						icon="❝"
+						author_name={post.quoted_post.author_name}
+						author_avatar={post.quoted_post.author_avatar}
+						author_handle={post.quoted_post.author_handle}
+						emojis={post.emojis}
+						body={post.quoted_post.body}
+						original_url={post.quoted_post.original_url}
+					/>
 				)}
 				<div
 					key={post.id}
@@ -259,63 +272,24 @@ export function PostAnimator({
 					className={`w-full font-extrabold leading-none tracking-tight${post.reply_to || post.quoted_post ? " min-w-[40ch]" : ""}`}
 					style={{ visibility: fontSizes ? "visible" : "hidden", color: textColor }}
 				>
-					{lines.map((line, idx) => {
-						const charOffset = body.indexOf(line);
-
-						return (
-							<div
-								key={charOffset}
-								style={{
-									fontSize: fontSizes
-										? `${fontSizes[idx]}px`
-										: `${BASE_FONT_SIZE}px`,
-									whiteSpace: "nowrap",
-									...(paragraphStartLines.has(idx) && { marginTop: "0.5em" }),
-								}}
-							>
-								<span
-									ref={(el) => {
-										lineRefs.current[idx] = el;
-									}}
-								>
-									<EmojiText text={line} emojis={post.emojis} />
-								</span>
-							</div>
-						);
-					})}
-				</div>
-				{post.link_url && (() => {
-					let hostname = post.link_url;
-
-					try {
-						hostname = new URL(post.link_url).hostname;
-					} catch { /* keep raw */ }
-
-					return (
-						<a
-							href={post.link_url}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm hover:bg-white/20"
+					{lines.map((line, idx) => (
+						<div
+							key={line}
+							style={{
+								fontSize: fontSizes ? `${fontSizes[idx]}px` : `${BASE_FONT_SIZE}px`,
+								whiteSpace: "nowrap",
+								...(paragraphStarts.has(idx) && { marginTop: "0.5em" }),
+							}}
 						>
-							<div className="flex items-center gap-3">
-								{post.link_favicon && (
-									<img
-										src={post.link_favicon}
-										alt=""
-										className="h-5 w-5 flex-shrink-0 rounded"
-									/>
-								)}
-								<div className="flex-1 min-w-0">
-									{post.link_title && (
-										<p className="font-semibold text-white/90 truncate">{post.link_title}</p>
-									)}
-									<p className="text-xs text-white/50 truncate">{hostname}</p>
-								</div>
-							</div>
-						</a>
-					);
-				})()}
+							<span ref={(el) => { lineRefs.current[idx] = el; }}>
+								<EmojiText text={line} emojis={post.emojis} />
+							</span>
+						</div>
+					))}
+				</div>
+				{post.link_url && (
+					<LinkCard url={post.link_url} title={post.link_title} favicon={post.link_favicon} />
+				)}
 			</div>
 		</div>
 	);

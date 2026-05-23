@@ -36,7 +36,7 @@ export function Attribution({ post }: { post: Post }) {
 						href={post.quoted_post.original_url}
 						target="_blank"
 						rel="noopener noreferrer"
-						className="flex min-w-0 flex-1 items-center gap-2"
+						className="flex min-w-0 items-center gap-2"
 					>
 						<AuthorChip
 							name={post.quoted_post.author_name}
@@ -46,7 +46,7 @@ export function Attribution({ post }: { post: Post }) {
 						/>
 					</a>
 				) : (
-					<div className="flex min-w-0 flex-1 items-center gap-2">
+					<div className="flex min-w-0 items-center gap-2">
 						<AuthorChip
 							name={post.quoted_post.author_name}
 							avatar={post.quoted_post.author_avatar}
@@ -60,7 +60,7 @@ export function Attribution({ post }: { post: Post }) {
 					href={post.original_url}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="flex min-w-0 flex-1 items-center gap-2"
+					className="flex min-w-0 items-center gap-2"
 				>
 					<AuthorChip
 						name={post.author_name}
@@ -81,7 +81,7 @@ export function Attribution({ post }: { post: Post }) {
 					href={post.original_url}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="flex min-w-0 flex-1 items-center gap-2"
+					className="flex min-w-0 items-center gap-2"
 				>
 					<AuthorChip
 						name={post.author_name}
@@ -91,7 +91,7 @@ export function Attribution({ post }: { post: Post }) {
 					/>
 				</a>
 				<span className="flex-shrink-0 text-white/30">{label}</span>
-				<div className="flex min-w-0 flex-1 items-center gap-2">
+				<div className="flex min-w-0 items-center gap-2">
 					<AuthorChip
 						name={post.boosted_by}
 						avatar={post.boosted_by_avatar ?? ""}

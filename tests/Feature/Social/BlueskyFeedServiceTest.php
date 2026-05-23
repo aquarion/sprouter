@@ -58,6 +58,135 @@ it('refreshes the token and retries when the access token is expired', function 
         ->and($account->token_secret)->toBe('new-refresh-token');
 });
 
+it('enriches post authors with banner from getProfiles', function () {
+    $user = User::factory()->create();
+    $account = SocialAccount::factory()->create([
+        'user_id' => $user->id,
+        'provider' => 'bluesky',
+        'access_token' => 'valid-token',
+        'token_secret' => 'refresh-token',
+    ]);
+
+    Http::fake([
+        'bsky.social/xrpc/app.bsky.feed.getTimeline*' => Http::response([
+            'feed' => [[
+                'post' => [
+                    'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+                    'record' => [],
+                    'author' => ['did' => 'did:plc:abc', 'handle' => 'user.bsky.social'],
+                ],
+            ]],
+            'cursor' => null,
+        ]),
+        'bsky.social/xrpc/app.bsky.actor.getProfiles*' => Http::response([
+            'profiles' => [['did' => 'did:plc:abc', 'banner' => 'https://cdn.bsky.app/banner.jpg']],
+        ]),
+    ]);
+
+    $service = new BlueskyFeedService(new BlueskyAuthService);
+    $result = $service->getHomeTimeline($account);
+
+    expect($result['posts'][0]['post']['author']['banner'])->toBe('https://cdn.bsky.app/banner.jpg');
+});
+
+it('caches profile banners for 24 hours and avoids re-fetching', function () {
+    $user = User::factory()->create();
+    $account = SocialAccount::factory()->create([
+        'user_id' => $user->id,
+        'provider' => 'bluesky',
+        'access_token' => 'valid-token',
+        'token_secret' => 'refresh-token',
+    ]);
+
+    $feedResponse = [
+        'feed' => [[
+            'post' => [
+                'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+                'record' => [],
+                'author' => ['did' => 'did:plc:abc', 'handle' => 'user.bsky.social'],
+            ],
+        ]],
+        'cursor' => null,
+    ];
+
+    Http::fake([
+        'bsky.social/xrpc/app.bsky.feed.getTimeline*' => Http::response($feedResponse),
+        'bsky.social/xrpc/app.bsky.actor.getProfiles*' => Http::response([
+            'profiles' => [['did' => 'did:plc:abc', 'banner' => 'https://cdn.bsky.app/banner.jpg']],
+        ]),
+    ]);
+
+    $service = new BlueskyFeedService(new BlueskyAuthService);
+    $service->getHomeTimeline($account);
+    $service->getHomeTimeline($account);
+
+    Http::assertSentCount(2); // 1 timeline + 1 getProfiles on first call; both cached on second
+});
+
+it('skips profile fetch for authors that already have a banner', function () {
+    $user = User::factory()->create();
+    $account = SocialAccount::factory()->create([
+        'user_id' => $user->id,
+        'provider' => 'bluesky',
+        'access_token' => 'valid-token',
+        'token_secret' => 'refresh-token',
+    ]);
+
+    Http::fake([
+        'bsky.social/xrpc/app.bsky.feed.getTimeline*' => Http::response([
+            'feed' => [[
+                'post' => [
+                    'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+                    'record' => [],
+                    'author' => [
+                        'did' => 'did:plc:abc',
+                        'handle' => 'user.bsky.social',
+                        'banner' => 'https://cdn.bsky.app/existing-banner.jpg',
+                    ],
+                ],
+            ]],
+            'cursor' => null,
+        ]),
+        'bsky.social/xrpc/app.bsky.actor.getProfiles*' => Http::response(['profiles' => []]),
+    ]);
+
+    $service = new BlueskyFeedService(new BlueskyAuthService);
+    $result = $service->getHomeTimeline($account);
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'getProfiles'));
+    expect($result['posts'][0]['post']['author']['banner'])->toBe('https://cdn.bsky.app/existing-banner.jpg');
+});
+
+it('handles getProfiles failure gracefully and returns posts without banners', function () {
+    $user = User::factory()->create();
+    $account = SocialAccount::factory()->create([
+        'user_id' => $user->id,
+        'provider' => 'bluesky',
+        'access_token' => 'valid-token',
+        'token_secret' => 'refresh-token',
+    ]);
+
+    Http::fake([
+        'bsky.social/xrpc/app.bsky.feed.getTimeline*' => Http::response([
+            'feed' => [[
+                'post' => [
+                    'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+                    'record' => [],
+                    'author' => ['did' => 'did:plc:abc', 'handle' => 'user.bsky.social'],
+                ],
+            ]],
+            'cursor' => null,
+        ]),
+        'bsky.social/xrpc/app.bsky.actor.getProfiles*' => Http::response(['error' => 'ServerError'], 500),
+    ]);
+
+    $service = new BlueskyFeedService(new BlueskyAuthService);
+    $result = $service->getHomeTimeline($account);
+
+    expect($result['posts'])->toHaveCount(1)
+        ->and($result['posts'][0]['post']['author'])->not->toHaveKey('banner');
+});
+
 it('does not retry on non-expiry errors', function () {
     $user = User::factory()->create();
     $account = SocialAccount::factory()->create([

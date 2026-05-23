@@ -251,7 +251,6 @@ class PostNormalizer
             return [
                 'url' => $this->safeUrl($ext['uri'] ?? '') ?: null,
                 'title' => $ext['title'] ?? null,
-                'favicon' => $this->safeUrl($ext['thumb'] ?? '') ?: null,
             ];
         }
         if ($type === 'app.bsky.embed.recordWithMedia#view') {
@@ -262,7 +261,6 @@ class PostNormalizer
                 return [
                     'url' => $this->safeUrl($ext['uri'] ?? '') ?: null,
                     'title' => $ext['title'] ?? null,
-                    'favicon' => $this->safeUrl($ext['thumb'] ?? '') ?: null,
                 ];
             }
         }

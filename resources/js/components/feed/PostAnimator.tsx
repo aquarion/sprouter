@@ -57,7 +57,13 @@ function ContextPanel({
 }
 
 const FAVICON_404_KEY = "sprouter:favicon404s";
-const favicon404s: Set<string> = new Set(JSON.parse(localStorage.getItem(FAVICON_404_KEY) ?? "[]"));
+const favicon404s: Set<string> = (() => {
+	try {
+		return new Set<string>(JSON.parse(localStorage.getItem(FAVICON_404_KEY) ?? "[]"));
+	} catch {
+		return new Set<string>();
+	}
+})();
 
 function markFavicon404(url: string) {
 	favicon404s.add(url);

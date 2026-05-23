@@ -61,15 +61,30 @@ export function splitIntoLinesWithBoundaries(text: string): {
 	});
 	const naturalTotal = naturalCounts.reduce((a, b) => a + b, 0);
 
-	// If paragraphs together exceed the cap, scale each one down proportionally
-	// so the total stays within MAX_TOTAL_LINES. This keeps text large enough to
-	// read when a post has two long paragraphs that would otherwise produce 15+ lines.
-	const maxCounts =
-		naturalTotal > MAX_TOTAL_LINES
-			? naturalCounts.map((n) =>
-					Math.max(1, Math.round((n * MAX_TOTAL_LINES) / naturalTotal)),
-				)
-			: naturalCounts;
+	// If paragraphs together exceed the cap, scale each one down using the
+	// Largest Remainder Method so sum(maxCounts) == MAX_TOTAL_LINES exactly.
+	let maxCounts: number[];
+
+	if (naturalTotal <= MAX_TOTAL_LINES) {
+		maxCounts = naturalCounts;
+	} else {
+		const raw = naturalCounts.map((n) => (n * MAX_TOTAL_LINES) / naturalTotal);
+		const floors = raw.map((r) => Math.floor(r));
+		let remainder = MAX_TOTAL_LINES - floors.reduce((a, b) => a + b, 0);
+		const order = raw
+			.map((r, i): [number, number] => [r - Math.floor(r), i])
+			.sort(([a], [b]) => b - a);
+
+		for (const [, i] of order) {
+			if (remainder-- <= 0) {
+				break;
+			}
+
+			floors[i]++;
+		}
+
+		maxCounts = floors.map((f) => Math.max(1, f));
+	}
 
 	const lines: string[] = [];
 

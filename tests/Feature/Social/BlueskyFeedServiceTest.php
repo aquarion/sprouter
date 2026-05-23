@@ -6,9 +6,14 @@ use App\Services\Bluesky\BlueskyAuthService;
 use App\Services\Bluesky\BlueskyFeedService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    Cache::flush();
+});
 
 it('returns the timeline on a successful request', function () {
     $user = User::factory()->create();

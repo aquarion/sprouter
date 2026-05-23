@@ -29,6 +29,8 @@ const makePost = (id: string): Post => ({
 	reply_to: null,
 	quoted_post: null,
 	boosted_by: null,
+	boosted_by_avatar: null,
+	boosted_by_handle: null,
 	emojis: {},
 });
 

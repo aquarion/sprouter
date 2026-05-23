@@ -11,8 +11,9 @@ class PostNormalizer
             ? (parse_url($source['url'], PHP_URL_HOST) ?? $host)
             : $host;
 
-        $booster = isset($status['reblog'])
-            ? ($status['account']['display_name'] ?: $status['account']['acct'])
+        $boosterAccount = isset($status['reblog']) ? $status['account'] : null;
+        $booster = $boosterAccount
+            ? ($boosterAccount['display_name'] ?: $boosterAccount['acct'])
             : null;
 
         $emojis = $this->buildEmojiMap(array_merge(
@@ -44,6 +45,8 @@ class PostNormalizer
             'reply_to' => $this->mastodonReplyTo($parentStatus, $host),
             'quoted_post' => null,
             'boosted_by' => $booster,
+            'boosted_by_avatar' => $boosterAccount ? $this->safeUrl($boosterAccount['avatar'] ?? '') : null,
+            'boosted_by_handle' => $boosterAccount ? '@'.$boosterAccount['acct'] : null,
             'emojis' => $emojis,
         ];
     }
@@ -55,8 +58,11 @@ class PostNormalizer
         $author = $post['author'];
 
         $reason = $feedPost['reason'] ?? null;
-        $booster = ($reason && ($reason['$type'] ?? '') === 'app.bsky.feed.defs#reasonRepost')
-            ? ($reason['by']['displayName'] ?? $reason['by']['handle'] ?? null)
+        $repostBy = ($reason && ($reason['$type'] ?? '') === 'app.bsky.feed.defs#reasonRepost')
+            ? ($reason['by'] ?? null)
+            : null;
+        $booster = $repostBy
+            ? ($repostBy['displayName'] ?? $repostBy['handle'] ?? null)
             : null;
 
         $externalData = $this->blueskyExternalData($post['embed'] ?? null);
@@ -78,6 +84,8 @@ class PostNormalizer
             'reply_to' => $this->blueskyReplyTo($feedPost['reply']['parent'] ?? null),
             'quoted_post' => $this->blueskyQuotedPost($post['embed'] ?? null),
             'boosted_by' => $booster,
+            'boosted_by_avatar' => $repostBy ? $this->safeUrl($repostBy['avatar'] ?? '') : null,
+            'boosted_by_handle' => $repostBy ? '@'.($repostBy['handle'] ?? '') : null,
             'emojis' => [],
         ];
     }

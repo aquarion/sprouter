@@ -56,7 +56,16 @@ function ContextPanel({
 	return <div className={PANEL_CLASS}>{content}</div>;
 }
 
+const FAVICON_404_KEY = "sprouter:favicon404s";
+const favicon404s: Set<string> = new Set(JSON.parse(localStorage.getItem(FAVICON_404_KEY) ?? "[]"));
+
+function markFavicon404(url: string) {
+	favicon404s.add(url);
+	localStorage.setItem(FAVICON_404_KEY, JSON.stringify([...favicon404s]));
+}
+
 function LinkCard({ url, title, favicon }: { url: string; title: string | null; favicon: string | null }) {
+	const [faviconFailed, setFaviconFailed] = useState(false);
 	let hostname = url;
 
 	try {
@@ -65,10 +74,19 @@ function LinkCard({ url, title, favicon }: { url: string; title: string | null; 
 		/* keep raw */
 	}
 
+	const showFavicon = favicon && !favicon404s.has(favicon) && !faviconFailed;
+
 	return (
 		<a href={url} target="_blank" rel="noopener noreferrer" className={`${PANEL_CLASS} hover:bg-white/20`}>
 			<div className="flex items-center gap-3">
-				{favicon && <img src={favicon} alt="" className="h-5 w-5 flex-shrink-0 rounded" />}
+				{showFavicon && (
+					<img
+						src={favicon}
+						alt=""
+						className="h-5 w-5 flex-shrink-0 rounded"
+						onError={() => { markFavicon404(favicon); setFaviconFailed(true); }}
+					/>
+				)}
 				<div className="min-w-0 flex-1">
 					{title && <p className="truncate font-semibold text-white/90">{title}</p>}
 					<p className="truncate text-xs text-white/50">{hostname}</p>

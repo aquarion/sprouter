@@ -176,7 +176,7 @@ export function PostAnimator({
 									subtext={post.reply_to.author_handle}
 								/>
 							</div>
-							<p className="line-clamp-3">{post.reply_to.body}</p>
+							<p>{post.reply_to.body}</p>
 						</a>
 					) : (
 						<div className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm">
@@ -189,7 +189,7 @@ export function PostAnimator({
 									subtext={post.reply_to.author_handle}
 								/>
 							</div>
-							<p className="line-clamp-3">{post.reply_to.body}</p>
+							<p>{post.reply_to.body}</p>
 						</div>
 					)
 				)}
@@ -210,7 +210,7 @@ export function PostAnimator({
 									subtext={post.quoted_post.author_handle}
 								/>
 							</div>
-							<p className="line-clamp-3">{post.quoted_post.body}</p>
+							<p>{post.quoted_post.body}</p>
 						</a>
 					) : (
 						<div className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm">
@@ -223,7 +223,7 @@ export function PostAnimator({
 									subtext={post.quoted_post.author_handle}
 								/>
 							</div>
-							<p className="line-clamp-3">{post.quoted_post.body}</p>
+							<p>{post.quoted_post.body}</p>
 						</div>
 					)
 				)}

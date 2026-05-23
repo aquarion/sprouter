@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-mkdir -p storage/framework/{cache,sessions,views} storage/logs storage/app/public
+mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs storage/app/public
 
 php artisan config:cache
 php artisan route:cache

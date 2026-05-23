@@ -5,13 +5,13 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM dunglas/frankenphp:latest-php8.3-alpine
+FROM dunglas/frankenphp:1-php8.4-alpine
 WORKDIR /app
 
 RUN apk add --no-cache git unzip \
     && install-php-extensions pdo_mysql pdo_sqlite redis pcntl opcache
 
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interaction
@@ -19,7 +19,9 @@ RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interactio
 COPY . .
 COPY --from=node-builder /app/public/build public/build
 
-RUN chown -R www-data:www-data storage bootstrap/cache \
+RUN mkdir -p bootstrap/cache \
+    && php artisan package:discover --ansi \
+    && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
 COPY docker/entrypoint.sh /entrypoint.sh

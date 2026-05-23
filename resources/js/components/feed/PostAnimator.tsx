@@ -5,8 +5,8 @@ import { pickTemplate, SplitText } from "@/lib/animations";
 import type { AnimationTemplate } from "@/lib/animations/types";
 import { splitIntoLines } from "@/lib/block-text";
 import { EmojiText } from "@/lib/emoji-text";
-import { postColors } from "@/lib/post-colors";
 import type { PostColors } from "@/lib/post-colors";
+import { postColors } from "@/lib/post-colors";
 import type { Post } from "@/types/post";
 import { AuthorChip } from "./AuthorChip";
 
@@ -37,14 +37,31 @@ export function PostAnimator({
 		onReadyRef.current = onReady;
 	});
 
-	const paragraphs = (post.body || post.media[0]?.alt_text || "")
-		.split("\n")
-		.map((p) => p.trim())
-		.filter(Boolean);
-	const body = paragraphs.join(" ");
+	const paragraphs = useMemo(
+		() =>
+			(post.body || post.media[0]?.alt_text || "")
+				.split("\n")
+				.map((p) => p.trim())
+				.filter(Boolean),
+		[post.body, post.media],
+	);
+	const body = paragraphs.join("\n");
 
 	// Derive lines synchronously — splitIntoLines is pure, no DOM access needed.
 	const lines = useMemo(() => (body ? splitIntoLines(body) : []), [body]);
+
+	// Track which line indices start a new paragraph (for visual spacing).
+	const paragraphStartLines = useMemo(() => {
+		if (paragraphs.length <= 1) return new Set<number>();
+		const starts = new Set<number>();
+		let lineIdx = 0;
+		for (let i = 0; i < paragraphs.length; i++) {
+			const paraLines = splitIntoLines(paragraphs[i]);
+			if (i > 0) starts.add(lineIdx);
+			lineIdx += paraLines.length;
+		}
+		return starts;
+	}, [paragraphs]);
 
 	// Font sizes are only valid for the current body; treat as null when body changes.
 	const fontSizes = fontSizeState?.body === body ? fontSizeState.sizes : null;
@@ -77,7 +94,16 @@ export function PostAnimator({
 			return w > 0 ? BASE_FONT_SIZE * (targetWidth / w) : BASE_FONT_SIZE;
 		});
 
-		const totalHeight = sizes.reduce((sum, s) => sum + s * LINE_HEIGHT, 0);
+		// For multi-paragraph posts, cap per-line sizes at 2× the minimum (the size
+		// for the widest line). Without this, a short paragraph produces a massive
+		// font that dominates the height budget and leaves narrow text after scaling.
+		if (paragraphStartLines.size > 0) {
+			const minSize = Math.min(...sizes);
+			sizes = sizes.map((s) => Math.min(s, minSize * 2));
+		}
+
+		const gapHeight = [...paragraphStartLines].reduce((sum, idx) => sum + (sizes[idx] ?? 0) * 0.5, 0);
+		const totalHeight = sizes.reduce((sum, s) => sum + s * LINE_HEIGHT, 0) + gapHeight;
 		const heightBudget = height * 0.45;
 
 		if (totalHeight > heightBudget) {
@@ -86,7 +112,7 @@ export function PostAnimator({
 		}
 
 		setFontSizeState({ body, sizes });
-	}, [lines, body]);
+	}, [lines, body, paragraphStartLines]);
 
 	// Phase 3: run GSAP animation once font sizes are applied
 	useGSAP(() => {
@@ -176,7 +202,7 @@ export function PostAnimator({
 									subtext={post.reply_to.author_handle}
 								/>
 							</div>
-							<p>{post.reply_to.body}</p>
+							<p className="whitespace-pre-wrap">{post.reply_to.body}</p>
 						</a>
 					) : (
 						<div className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm">
@@ -189,7 +215,7 @@ export function PostAnimator({
 									subtext={post.reply_to.author_handle}
 								/>
 							</div>
-							<p>{post.reply_to.body}</p>
+							<p className="whitespace-pre-wrap">{post.reply_to.body}</p>
 						</div>
 					)
 				)}
@@ -210,7 +236,7 @@ export function PostAnimator({
 									subtext={post.quoted_post.author_handle}
 								/>
 							</div>
-							<p>{post.quoted_post.body}</p>
+							<p className="whitespace-pre-wrap">{post.quoted_post.body}</p>
 						</a>
 					) : (
 						<div className="max-w-[40ch] rounded border border-white/20 bg-white/10 px-4 py-3 text-left text-sm text-white/70 backdrop-blur-sm">
@@ -223,7 +249,7 @@ export function PostAnimator({
 									subtext={post.quoted_post.author_handle}
 								/>
 							</div>
-							<p>{post.quoted_post.body}</p>
+							<p className="whitespace-pre-wrap">{post.quoted_post.body}</p>
 						</div>
 					)
 				)}
@@ -233,7 +259,7 @@ export function PostAnimator({
 					className={`w-full font-extrabold leading-none tracking-tight${post.reply_to || post.quoted_post ? " min-w-[40ch]" : ""}`}
 					style={{ visibility: fontSizes ? "visible" : "hidden", color: textColor }}
 				>
-					{lines.map((line) => {
+					{lines.map((line, idx) => {
 						const charOffset = body.indexOf(line);
 
 						return (
@@ -241,14 +267,15 @@ export function PostAnimator({
 								key={charOffset}
 								style={{
 									fontSize: fontSizes
-										? `${fontSizes[lines.indexOf(line)]}px`
+										? `${fontSizes[idx]}px`
 										: `${BASE_FONT_SIZE}px`,
 									whiteSpace: "nowrap",
+									...(paragraphStartLines.has(idx) && { marginTop: "0.5em" }),
 								}}
 							>
 								<span
 									ref={(el) => {
-										lineRefs.current[lines.indexOf(line)] = el;
+										lineRefs.current[idx] = el;
 									}}
 								>
 									<EmojiText text={line} emojis={post.emojis} />

@@ -31,3 +31,7 @@ yarn-error.log
 .superpowers
 *:Zone.Identifier
 htdocs
+
+**/caddy
+frankenphp
+frankenphp-worker.php

@@ -1,6 +1,5 @@
-import { EmojiText } from "@/lib/emoji-text";
-import { AuthorChip } from "./AuthorChip";
 import type { Post } from "@/types/post";
+import { AuthorChip } from "./AuthorChip";
 
 function timeSince(dateStr: string): string {
 	const seconds = Math.floor(
@@ -37,7 +36,7 @@ export function Attribution({ post }: { post: Post }) {
 						href={post.quoted_post.original_url}
 						target="_blank"
 						rel="noopener noreferrer"
-						className="flex min-w-0 flex-1 items-center gap-2"
+						className="flex min-w-0 items-center gap-2"
 					>
 						<AuthorChip
 							name={post.quoted_post.author_name}
@@ -47,7 +46,7 @@ export function Attribution({ post }: { post: Post }) {
 						/>
 					</a>
 				) : (
-					<div className="flex min-w-0 flex-1 items-center gap-2">
+					<div className="flex min-w-0 items-center gap-2">
 						<AuthorChip
 							name={post.quoted_post.author_name}
 							avatar={post.quoted_post.author_avatar}
@@ -61,7 +60,7 @@ export function Attribution({ post }: { post: Post }) {
 					href={post.original_url}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="flex min-w-0 flex-1 items-center gap-2"
+					className="flex min-w-0 items-center gap-2"
 				>
 					<AuthorChip
 						name={post.author_name}
@@ -74,18 +73,35 @@ export function Attribution({ post }: { post: Post }) {
 		);
 	}
 
-	const subtext = (
-		<>
-			{post.boosted_by && (
-				<>
-					{post.source === "mastodon" ? "Boosted" : "Reposted"} by{" "}
-					<EmojiText text={post.boosted_by} emojis={post.emojis} />
-					{" · "}
-				</>
-			)}
-			Posted {timeSince(post.created_at)} · tap to open ↗
-		</>
-	);
+	if (post.boosted_by) {
+		const label = post.source === "mastodon" ? "↺ Boosted" : "↺ Reposted";
+		return (
+			<div className="flex min-w-0 flex-1 items-center gap-2 text-left">
+				<a
+					href={post.original_url}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="flex min-w-0 items-center gap-2"
+				>
+					<AuthorChip
+						name={post.author_name}
+						avatar={post.author_avatar}
+						emojis={post.emojis}
+						subtext={`Posted ${timeSince(post.created_at)} · tap to open ↗`}
+					/>
+				</a>
+				<span className="flex-shrink-0 text-white/30">{label}</span>
+				<div className="flex min-w-0 items-center gap-2">
+					<AuthorChip
+						name={post.boosted_by}
+						avatar={post.boosted_by_avatar ?? ""}
+						emojis={post.emojis}
+						subtext={post.boosted_by_handle ?? ""}
+					/>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<a
@@ -98,7 +114,7 @@ export function Attribution({ post }: { post: Post }) {
 				name={post.author_name}
 				avatar={post.author_avatar}
 				emojis={post.emojis}
-				subtext={subtext}
+				subtext={`Posted ${timeSince(post.created_at)} · tap to open ↗`}
 			/>
 		</a>
 	);

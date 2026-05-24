@@ -38,6 +38,8 @@ export interface Post {
 	reply_to: ReplyTo | null;
 	quoted_post: QuotedPost | null;
 	boosted_by: string | null;
+	boosted_by_avatar: string | null;
+	boosted_by_handle: string | null;
 	emojis: Record<string, string>;
 }
 

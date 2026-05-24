@@ -11,8 +11,9 @@ class PostNormalizer
             ? (parse_url($source['url'], PHP_URL_HOST) ?? $host)
             : $host;
 
-        $booster = isset($status['reblog'])
-            ? ($status['account']['display_name'] ?: $status['account']['acct'])
+        $boosterAccount = isset($status['reblog']) ? $status['account'] : null;
+        $booster = $boosterAccount
+            ? ($boosterAccount['display_name'] ?: $boosterAccount['acct'])
             : null;
 
         $emojis = $this->buildEmojiMap(array_merge(
@@ -20,6 +21,12 @@ class PostNormalizer
             $source['account']['emojis'] ?? [],
             $status['account']['emojis'] ?? [],
         ));
+
+        $card = $source['card'] ?? null;
+        $cardUrl = $card ? ($this->safeUrl($card['url'] ?? '') ?: null) : null;
+        $linkUrl = $cardUrl
+            ?? $this->extractFirstLinkFromHtml($source['content'])
+            ?? $this->extractFirstLink(html_entity_decode(strip_tags($source['content']), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
 
         return [
             'id' => "mastodon_{$status['id']}",
@@ -32,13 +39,14 @@ class PostNormalizer
             'media' => $this->normaliseMastodonMedia($source['media_attachments'] ?? []),
             'created_at' => $source['created_at'],
             'original_url' => $this->safeUrl($source['url']),
-            'link_url' => $this->extractFirstLinkFromHtml($source['content'])
-                ?? $this->extractFirstLink(html_entity_decode(strip_tags($source['content']), ENT_QUOTES | ENT_HTML5, 'UTF-8')),
-            'link_title' => null,
-            'link_favicon' => null,
+            'link_url' => $linkUrl,
+            'link_title' => $card ? ($card['title'] ?? null) : null,
+            'link_favicon' => $this->faviconUrl($linkUrl),
             'reply_to' => $this->mastodonReplyTo($parentStatus, $host),
             'quoted_post' => null,
             'boosted_by' => $booster,
+            'boosted_by_avatar' => $boosterAccount ? $this->safeUrl($boosterAccount['avatar'] ?? '') : null,
+            'boosted_by_handle' => $boosterAccount ? '@'.$boosterAccount['acct'] : null,
             'emojis' => $emojis,
         ];
     }
@@ -50,11 +58,15 @@ class PostNormalizer
         $author = $post['author'];
 
         $reason = $feedPost['reason'] ?? null;
-        $booster = ($reason && ($reason['$type'] ?? '') === 'app.bsky.feed.defs#reasonRepost')
-            ? ($reason['by']['displayName'] ?? $reason['by']['handle'] ?? null)
+        $repostBy = ($reason && ($reason['$type'] ?? '') === 'app.bsky.feed.defs#reasonRepost')
+            ? ($reason['by'] ?? null)
+            : null;
+        $booster = $repostBy
+            ? ($repostBy['displayName'] ?? $repostBy['handle'] ?? null)
             : null;
 
         $externalData = $this->blueskyExternalData($post['embed'] ?? null);
+        $linkUrl = $externalData['url'] ?? $this->extractFirstLink($record['text']);
 
         return [
             'id' => "bluesky_{$post['uri']}",
@@ -67,12 +79,14 @@ class PostNormalizer
             'media' => $this->normaliseBlueskyMedia($post['embed'] ?? null),
             'created_at' => $record['createdAt'],
             'original_url' => $this->blueskyPostUrl($author['handle'], $post['uri']),
-            'link_url' => $externalData['url'] ?? $this->extractFirstLink($record['text']),
+            'link_url' => $linkUrl,
             'link_title' => $externalData['title'] ?? null,
-            'link_favicon' => $externalData['favicon'] ?? null,
+            'link_favicon' => $this->faviconUrl($linkUrl),
             'reply_to' => $this->blueskyReplyTo($feedPost['reply']['parent'] ?? null),
             'quoted_post' => $this->blueskyQuotedPost($post['embed'] ?? null),
             'boosted_by' => $booster,
+            'boosted_by_avatar' => $repostBy ? $this->safeUrl($repostBy['avatar'] ?? '') : null,
+            'boosted_by_handle' => $repostBy ? '@'.($repostBy['handle'] ?? '') : null,
             'emojis' => [],
         ];
     }
@@ -237,7 +251,6 @@ class PostNormalizer
             return [
                 'url' => $this->safeUrl($ext['uri'] ?? '') ?: null,
                 'title' => $ext['title'] ?? null,
-                'favicon' => $this->safeUrl($ext['thumb'] ?? '') ?: null,
             ];
         }
         if ($type === 'app.bsky.embed.recordWithMedia#view') {
@@ -248,7 +261,6 @@ class PostNormalizer
                 return [
                     'url' => $this->safeUrl($ext['uri'] ?? '') ?: null,
                     'title' => $ext['title'] ?? null,
-                    'favicon' => $this->safeUrl($ext['thumb'] ?? '') ?: null,
                 ];
             }
         }
@@ -265,9 +277,10 @@ class PostNormalizer
         );
     }
 
-    private function truncateBody(string $text, int $limit = 120): string
+    private function truncateBody(string $text, ?int $limit = null): string
     {
         $text = $this->truncateUrls($text);
+        $limit ??= config('feed.context_body_limit', 300);
 
         return mb_strlen($text) > $limit ? mb_substr($text, 0, $limit).'…' : $text;
     }
@@ -293,6 +306,17 @@ class PostNormalizer
         }
 
         return $map;
+    }
+
+    private function faviconUrl(?string $linkUrl): ?string
+    {
+        if (! $linkUrl) {
+            return null;
+        }
+
+        $domain = parse_url($linkUrl, PHP_URL_HOST);
+
+        return $domain ? "https://favicone.com/{$domain}" : null;
     }
 
     private function safeUrl(?string $url): string

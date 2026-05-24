@@ -68,6 +68,10 @@ jobs:
             patch)
               PATCH=$((PATCH + 1))
               ;;
+            *)
+              echo "Invalid version_bump value: $VERSION_BUMP"
+              exit 1
+              ;;
           esac
 
           NEXT_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
@@ -81,7 +85,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          if git ls-remote --tags origin "$NEXT_VERSION" | grep -q "$NEXT_VERSION"; then
+          if git ls-remote --tags origin "$NEXT_VERSION" | grep -qF "refs/tags/$NEXT_VERSION"; then
             echo "Tag $NEXT_VERSION already exists, aborting"
             exit 1
           fi
@@ -103,6 +107,7 @@ jobs:
           else
             COMMITS=$(git log "${LATEST_TAG}..HEAD" --pretty=format:"- %s (%h)" --no-merges)
           fi
+          [ -z "$COMMITS" ] && COMMITS="No notable changes."
 
           TAG_SUFFIX="${NEXT_VERSION#v}"
 

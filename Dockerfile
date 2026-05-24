@@ -1,14 +1,12 @@
-FROM node:22.22-alpine AS node-builder
+FROM node:22.22-alpine AS node-deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
-COPY . .
-RUN npm run build
 
 FROM dunglas/frankenphp:1-php8.4-alpine
 WORKDIR /app
 
-RUN apk add --no-cache git unzip \
+RUN apk add --no-cache git unzip nodejs npm \
     && install-php-extensions pdo_mysql pdo_sqlite redis pcntl opcache
 
 COPY --from=composer:2.9 /usr/bin/composer /usr/bin/composer
@@ -16,8 +14,9 @@ COPY --from=composer:2.9 /usr/bin/composer /usr/bin/composer
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interaction
 
+COPY --from=node-deps /app/node_modules node_modules
 COPY . .
-COPY --from=node-builder /app/public/build public/build
+RUN npm run build && rm -rf node_modules
 
 RUN mkdir -p bootstrap/cache \
     && php artisan package:discover --ansi \

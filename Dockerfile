@@ -27,6 +27,8 @@ RUN mkdir -p bootstrap/cache \
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+USER www-data
+
 ENV OCTANE_PORT=8000
 EXPOSE ${OCTANE_PORT}
 

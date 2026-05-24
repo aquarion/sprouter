@@ -1,9 +1,6 @@
 name: CI
 
 on:
-  push:
-    tags:
-      - "v*"
   pull_request:
     branches: ["**"]
     types: [opened, synchronize, reopened]
@@ -115,6 +112,9 @@ jobs:
     needs: build-and-push
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: true
     permissions:
       contents: read
 
@@ -126,21 +126,44 @@ jobs:
           username: sprouter
           key: ${{ secrets.SPROUTER_SSH_KEY }}
           script: |
-            set -e
+            set -euo pipefail
             cd /home/docker/sprouter-staging
-            timeout 300 docker compose pull
-            docker compose up -d
+            timeout 300 docker compose pull || {
+              echo "ERROR: docker compose pull failed or timed out after 300s"
+              exit 1
+            }
+            docker compose up -d || {
+              echo "ERROR: docker compose up -d failed"
+              docker compose ps
+              docker compose logs --tail=50
+              exit 1
+            }
             for i in $(seq 1 30); do
-              docker compose exec -T app php artisan --version > /dev/null 2>&1 && break
-              [ "$i" -eq 30 ] && echo "Container failed to become ready" && exit 1
+              if docker compose exec -T app php artisan --version > /dev/null 2>&1; then
+                echo "Container ready after ${i} attempt(s)"
+                break
+              fi
+              if [ "$i" -eq 30 ]; then
+                echo "ERROR: Container failed to become ready after 30 attempts"
+                docker compose logs --tail=50 app
+                exit 1
+              fi
+              echo "Attempt ${i}/30: container not ready, waiting..."
               sleep 2
             done
-            docker compose exec -T app php artisan migrate --force
+            docker compose exec -T app php artisan migrate --force || {
+              echo "ERROR: Migration failed"
+              docker compose exec -T app php artisan migrate:status || true
+              exit 1
+            }
 
   deploy-production:
     needs: build-and-push
-    if: inputs.tag != '' || ((github.event_name == 'push' || github.event_name == 'workflow_dispatch') && startsWith(github.ref, 'refs/tags/v'))
+    if: inputs.tag != ''
     runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     permissions:
       contents: read
 
@@ -152,13 +175,33 @@ jobs:
           username: sprouter
           key: ${{ secrets.SPROUTER_SSH_KEY }}
           script: |
-            set -e
+            set -euo pipefail
             cd /home/docker/sprouter
-            timeout 300 docker compose pull
-            docker compose up -d
+            timeout 300 docker compose pull || {
+              echo "ERROR: docker compose pull failed or timed out after 300s"
+              exit 1
+            }
+            docker compose up -d || {
+              echo "ERROR: docker compose up -d failed"
+              docker compose ps
+              docker compose logs --tail=50
+              exit 1
+            }
             for i in $(seq 1 30); do
-              docker compose exec -T app php artisan --version > /dev/null 2>&1 && break
-              [ "$i" -eq 30 ] && echo "Container failed to become ready" && exit 1
+              if docker compose exec -T app php artisan --version > /dev/null 2>&1; then
+                echo "Container ready after ${i} attempt(s)"
+                break
+              fi
+              if [ "$i" -eq 30 ]; then
+                echo "ERROR: Container failed to become ready after 30 attempts"
+                docker compose logs --tail=50 app
+                exit 1
+              fi
+              echo "Attempt ${i}/30: container not ready, waiting..."
               sleep 2
             done
-            docker compose exec -T app php artisan migrate --force
+            docker compose exec -T app php artisan migrate --force || {
+              echo "ERROR: Migration failed"
+              docker compose exec -T app php artisan migrate:status || true
+              exit 1
+            }

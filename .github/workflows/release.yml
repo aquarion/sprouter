@@ -36,6 +36,7 @@ jobs:
       - name: Get latest tag
         id: get_tag
         run: |
+          set -euo pipefail
           LATEST_TAG=$(git tag -l "v*.*.*" | sort -V | tail -n 1)
           if [ -z "$LATEST_TAG" ]; then
             LATEST_TAG="v0.0.0"
@@ -51,6 +52,7 @@ jobs:
           LATEST_TAG: ${{ steps.get_tag.outputs.latest_tag }}
           VERSION_BUMP: ${{ inputs.version_bump }}
         run: |
+          set -euo pipefail
           VERSION=${LATEST_TAG#v}
 
           IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
@@ -82,10 +84,12 @@ jobs:
         env:
           NEXT_VERSION: ${{ steps.next_version.outputs.next_version }}
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          if git ls-remote --tags origin "$NEXT_VERSION" | grep -qF "refs/tags/$NEXT_VERSION"; then
+          LS_REMOTE_OUTPUT=$(git ls-remote --tags origin "$NEXT_VERSION")
+          if echo "$LS_REMOTE_OUTPUT" | grep -qF "refs/tags/$NEXT_VERSION"; then
             echo "Tag $NEXT_VERSION already exists, aborting"
             exit 1
           fi
@@ -102,9 +106,14 @@ jobs:
           NEXT_VERSION: ${{ steps.next_version.outputs.next_version }}
           REPOSITORY: ${{ github.repository }}
         run: |
+          set -euo pipefail
           if [ "$LATEST_TAG" == "v0.0.0" ]; then
             COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges)
           else
+            if ! git rev-parse --verify "$LATEST_TAG" > /dev/null 2>&1; then
+              echo "ERROR: Tag $LATEST_TAG not found in local history"
+              exit 1
+            fi
             COMMITS=$(git log "${LATEST_TAG}..HEAD" --pretty=format:"- %s (%h)" --no-merges)
           fi
           [ -z "$COMMITS" ] && COMMITS="No notable changes."
@@ -139,4 +148,5 @@ jobs:
     uses: ./.github/workflows/ci.yml
     with:
       tag: ${{ needs.tag.outputs.next_version }}
+    # Pass caller secrets into the reusable workflow (required for SPROUTER_SSH_KEY, GITHUB_TOKEN, etc.)
     secrets: inherit  # pragma: allowlist secret

@@ -3,6 +3,7 @@
 node_modules
 vendor
 .env
+database/*.sqlite
 storage/logs
 storage/app
 storage/framework/cache

@@ -11,7 +11,7 @@ WORKDIR /app
 RUN apk add --no-cache git unzip \
     && install-php-extensions pdo_mysql pdo_sqlite redis pcntl opcache
 
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2.9 /usr/bin/composer /usr/bin/composer
 
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interaction

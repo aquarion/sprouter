@@ -128,7 +128,7 @@ jobs:
           script: |
             set -e
             cd /home/docker/sprouter-staging
-            docker compose pull
+            timeout 300 docker compose pull
             docker compose up -d
             for i in $(seq 1 30); do
               docker compose exec -T app php artisan --version > /dev/null 2>&1 && break
@@ -154,7 +154,7 @@ jobs:
           script: |
             set -e
             cd /home/docker/sprouter
-            docker compose pull
+            timeout 300 docker compose pull
             docker compose up -d
             for i in $(seq 1 30); do
               docker compose exec -T app php artisan --version > /dev/null 2>&1 && break

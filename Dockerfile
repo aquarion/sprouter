@@ -6,6 +6,11 @@ COPY . .
 RUN npm run build
 
 FROM dunglas/frankenphp:1-php8.4-alpine
+
+ARG APP_VERSION=dev
+ARG APP_PR_NUMBER=
+ARG APP_BRANCH=
+
 WORKDIR /app
 
 RUN apk add --no-cache git unzip \

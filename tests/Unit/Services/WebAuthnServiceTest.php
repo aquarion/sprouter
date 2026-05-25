@@ -5,6 +5,7 @@
 use App\Models\User;
 use App\Services\WebAuthn\WebAuthnService;
 use Tests\TestCase;
+use Webauthn\AuthenticatorSelectionCriteria;
 use Webauthn\PublicKeyCredentialCreationOptions;
 use Webauthn\PublicKeyCredentialRequestOptions;
 
@@ -18,8 +19,10 @@ test('generateRegistrationOptions returns creation options with rp and two algor
 
     expect($options)->toBeInstanceOf(PublicKeyCredentialCreationOptions::class)
         ->and($options->rp->name)->toBe(config('app.name'))
+        ->and($options->rp->id)->toBe(parse_url(config('app.url'), PHP_URL_HOST))
         ->and(strlen($options->challenge))->toBeGreaterThan(0)
-        ->and($options->pubKeyCredParams)->toHaveCount(2);
+        ->and($options->pubKeyCredParams)->toHaveCount(2)
+        ->and($options->authenticatorSelection->residentKey)->toBe(AuthenticatorSelectionCriteria::RESIDENT_KEY_REQUIREMENT_REQUIRED);
 });
 
 test('generateRegistrationOptions each call produces a different challenge', function () {
@@ -39,5 +42,6 @@ test('generateAuthenticationOptions returns request options with empty allowCred
 
     expect($options)->toBeInstanceOf(PublicKeyCredentialRequestOptions::class)
         ->and(strlen($options->challenge))->toBeGreaterThan(0)
-        ->and($options->allowCredentials)->toBeEmpty();
+        ->and($options->allowCredentials)->toBeEmpty()
+        ->and($options->rpId)->toBe(parse_url(config('app.url'), PHP_URL_HOST));
 });

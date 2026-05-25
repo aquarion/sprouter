@@ -24,7 +24,7 @@ RUN mkdir -p bootstrap/cache storage/framework/sessions storage/framework/views 
     && rm .env \
     && rm -rf node_modules
 
-RUN chown -R www-data:www-data storage bootstrap/cache \
+RUN chown -R www-data:www-data storage bootstrap/cache public \
     && chmod -R 775 storage bootstrap/cache
 
 COPY docker/entrypoint.sh /entrypoint.sh

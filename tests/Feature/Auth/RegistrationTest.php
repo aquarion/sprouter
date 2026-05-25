@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Laravel\Fortify\Features;
 
 beforeEach(function () {
@@ -21,5 +22,33 @@ test('new users can register', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('passkey.setup'));
+});
+
+test('after registration user is redirected to passkey setup', function () {
+    $response = $this->post(route('register.store'), [
+        'name' => 'Test User',
+        'email' => 'newuser@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ]);
+
+    $response->assertRedirect(route('passkey.setup'));
+});
+
+test('passkey setup page is accessible to authenticated users', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->withoutVite()->get(route('passkey.setup'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page->component('auth/passkey-setup'));
+});
+
+test('skip passkey setup redirects to dashboard', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->post(route('passkey.setup.skip'));
+
+    $response->assertRedirect(route('dashboard'));
 });

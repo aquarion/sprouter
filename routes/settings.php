@@ -14,6 +14,11 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
+
+    Route::get('register/passkey', fn () => Inertia::render('auth/passkey-setup'))
+        ->name('passkey.setup');
+    Route::post('register/passkey/skip', fn () => redirect()->route('dashboard'))
+        ->name('passkey.setup.skip');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

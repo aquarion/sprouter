@@ -117,7 +117,7 @@ export default function Login({
                                         type="button"
                                         variant="outline"
                                         className="w-full"
-                                        tabIndex={5}
+                                        tabIndex={6}
                                         disabled={loading}
                                         onClick={authenticate}
                                         data-test="passkey-login-button"
@@ -136,7 +136,7 @@ export default function Login({
                         {canRegister && (
                             <div className="text-center text-sm text-muted-foreground">
                                 Don't have an account?{' '}
-                                <TextLink href={register()} tabIndex={5}>
+                                <TextLink href={register()} tabIndex={7}>
                                     Sign up
                                 </TextLink>
                             </div>

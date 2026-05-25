@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Passkey extends Model
 {
-    use HasUlids;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'user_id',
@@ -23,6 +24,7 @@ class Passkey extends Model
     protected function casts(): array
     {
         return [
+            'sign_count' => 'integer',
             'transports' => 'array',
             'last_used_at' => 'datetime',
         ];

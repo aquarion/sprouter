@@ -69,9 +69,13 @@ function serializeCredential(
 }
 
 function getXsrfToken(): string {
-	return decodeURIComponent(
-		document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? "",
-	);
+	const token = document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1];
+
+	if (!token) {
+		throw new Error("Session expired. Please refresh the page.");
+	}
+
+	return decodeURIComponent(token);
 }
 
 type WebAuthnCredentialDescriptor = {
@@ -275,7 +279,13 @@ export function usePasskey(): UsePasskeyReturn {
 
 		abortRef.current?.abort();
 		abortRef.current = new AbortController();
-		runAuthentication("conditional", abortRef.current.signal).catch(() => {});
+		runAuthentication("conditional", abortRef.current.signal).catch(
+			(e: unknown) => {
+				if (e instanceof Error && e.name !== "AbortError") {
+					setError(e.message);
+				}
+			},
+		);
 	}, [isSupported, runAuthentication]);
 
 	const abortConditional = useCallback((): void => {

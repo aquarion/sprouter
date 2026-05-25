@@ -39,4 +39,8 @@ ARG APP_VERSION=dev
 ARG APP_PR_NUMBER=
 ARG APP_BRANCH=
 
+LABEL org.opencontainers.image.version=$APP_VERSION \
+      org.opencontainers.image.revision=$APP_PR_NUMBER \
+      org.opencontainers.image.ref.name=$APP_BRANCH
+
 ENTRYPOINT ["/entrypoint.sh"]

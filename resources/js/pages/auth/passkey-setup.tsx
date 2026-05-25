@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { skip } from '@/routes/passkey/setup';
 
 export default function PasskeySetup() {
     return (
@@ -21,7 +22,7 @@ export default function PasskeySetup() {
                 <div className="flex flex-col gap-3 w-full max-w-xs">
                     <Button
                         variant="ghost"
-                        onClick={() => router.post(route('passkey.setup.skip'))}
+                        onClick={() => router.post(skip.url())}
                     >
                         Skip for now
                     </Button>

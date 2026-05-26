@@ -3,6 +3,7 @@ import { KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { usePasskey } from '@/hooks/use-passkey';
+import { dashboard } from '@/routes';
 import { skip } from '@/routes/passkey/setup';
 
 export default function PasskeySetup() {
@@ -11,7 +12,7 @@ export default function PasskeySetup() {
     const handleSetup = async () => {
         const ok = await register('My passkey');
         if (ok) {
-            router.visit('/dashboard');
+            router.visit(dashboard.url());
         }
     };
 

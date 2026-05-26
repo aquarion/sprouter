@@ -6,7 +6,7 @@
 
 **Architecture:** `web-auth/webauthn-lib` handles all CBOR/COSE crypto; `WebAuthnService` wraps it so controllers stay thin. Two controllers: `PasskeyAuthController` (login ceremony, guest routes) and `PasskeyController` (settings CRUD, auth routes). Login page starts a silent conditional WebAuthn request on mount so passkeys surface in the browser autofill; an explicit button also triggers auth. Tests mock `WebAuthnService` for verification endpoints.
 
-**Tech Stack:** PHP 8.4, Laravel 13 + Fortify, `web-auth/webauthn-lib ^4.0`, React 18 + TypeScript, Inertia.js v3, Laravel Wayfinder
+**Tech Stack:** PHP 8.4, Laravel 13 + Fortify, `web-auth/webauthn-lib ^5.3`, React 18 + TypeScript, Inertia.js v3, Laravel Wayfinder
 
 ---
 
@@ -54,7 +54,7 @@
 - [ ] **Install `web-auth/webauthn-lib`**
 
 ```bash
-composer require web-auth/webauthn-lib:^4.0
+composer require web-auth/webauthn-lib:^5.3
 ```
 
 Expected: library added to `vendor/`; `composer.json` and `composer.lock` updated.

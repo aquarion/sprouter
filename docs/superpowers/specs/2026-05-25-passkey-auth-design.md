@@ -19,7 +19,7 @@ New `passkeys` table:
 | `id` | `ulid` | primary key |
 | `user_id` | `foreignId` | `onDelete('cascade')` |
 | `name` | `string` | user-provided label (e.g. "iPhone 15") |
-| `credential_id` | `string` | base64url-encoded WebAuthn credential ID |
+| `credential_id` | `string` | base64-encoded WebAuthn credential ID |
 | `public_key` | `text` | COSE-encoded public key |
 | `sign_count` | `unsignedBigInteger` | replay-attack counter |
 | `transports` | `json`, nullable | e.g. `["internal","hybrid"]` |

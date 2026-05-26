@@ -286,7 +286,11 @@ export function usePasskey(): UsePasskeyReturn {
 		abortRef.current = new AbortController();
 		runAuthentication("conditional", abortRef.current.signal).catch(
 			(e: unknown) => {
-				if (e instanceof Error && e.name !== "AbortError") {
+				if (
+					e instanceof Error &&
+					e.name !== "AbortError" &&
+					e.name !== "NotAllowedError"
+				) {
 					setError(e.message);
 				}
 			},

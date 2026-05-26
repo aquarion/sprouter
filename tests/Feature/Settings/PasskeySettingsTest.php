@@ -6,6 +6,7 @@ use App\Mail\PasskeyInvalidated;
 use App\Models\Passkey;
 use App\Models\User;
 use App\Services\WebAuthn\WebAuthnService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Symfony\Component\Uid\Uuid;
 use Webauthn\CredentialRecord;
@@ -34,7 +35,7 @@ test('registerOptions returns a challenge and stores it in session', function ()
 
     $response->assertOk();
     $response->assertJsonStructure(['challenge']);
-    expect(session('passkey.register.options'))->not->toBeNull();
+    expect(Cache::get('passkey_register_challenge_'.$user->id))->not->toBeNull();
 });
 
 test('store saves a new passkey for the authenticated user', function () {
@@ -69,7 +70,7 @@ test('store saves a new passkey for the authenticated user', function () {
         challenge: random_bytes(32),
         pubKeyCredParams: [],
     );
-    session(['passkey.register.options' => serialize($options)]);
+    Cache::put('passkey_register_challenge_'.$user->id, serialize($options), 300);
 
     $response = $this->actingAs($user)->postJson(route('passkey.register.store'), [
         'name' => 'iPhone 15',
@@ -121,7 +122,7 @@ test('store returns 422 when credential_id already exists', function () {
         challenge: random_bytes(32),
         pubKeyCredParams: [],
     );
-    session(['passkey.register.options' => serialize($options)]);
+    Cache::put('passkey_register_challenge_'.$user->id, serialize($options), 300);
 
     $response = $this->actingAs($user)->postJson(route('passkey.register.store'), [
         'name' => 'Duplicate',

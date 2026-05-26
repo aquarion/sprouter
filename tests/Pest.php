@@ -1,11 +1,11 @@
 <?php
 
-pest()->extend(DuskTestCase::class)
-    ->in('Browser');
-
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\DuskTestCase;
 use Tests\TestCase;
+
+pest()->extend(DuskTestCase::class)
+    ->in('Browser');
 
 /*
 |--------------------------------------------------------------------------

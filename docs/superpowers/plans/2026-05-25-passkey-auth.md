@@ -917,6 +917,7 @@ use App\Mail\PasskeyInvalidated;
 use App\Models\Passkey;
 use App\Models\User;
 use App\Services\WebAuthn\WebAuthnService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Webauthn\PublicKeyCredentialCreationOptions;
 use Webauthn\PublicKeyCredentialRpEntity;
@@ -924,7 +925,13 @@ use Webauthn\PublicKeyCredentialUserEntity;
 
 uses(\Tests\TestCase::class);
 
-test('registerOptions returns a challenge and stores it in session', function () {
+// NOTE: challenge is stored in Cache (not session) keyed by user ID.
+// The session-based approach was abandoned after discovering that logging in
+// with "remember me" causes SessionGuard::migrate() to rotate the session ID
+// between the GET /options and POST /register requests, losing the challenge.
+// Cache::put('passkey_register_challenge_{userId}', ...) is immune to session rotation.
+
+test('registerOptions returns a challenge and stores it in cache', function () {
     $user = User::factory()->create();
 
     $options = new PublicKeyCredentialCreationOptions(
@@ -944,7 +951,7 @@ test('registerOptions returns a challenge and stores it in session', function ()
 
     $response->assertOk();
     $response->assertJsonStructure(['challenge']);
-    $this->assertNotNull(session('passkey.register.options'));
+    $this->assertNotNull(Cache::get('passkey_register_challenge_'.$user->id));
 });
 
 test('store saves a new passkey for the authenticated user', function () {
@@ -971,7 +978,7 @@ test('store saves a new passkey for the authenticated user', function () {
         challenge: random_bytes(32),
         pubKeyCredParams: [],
     );
-    session(['passkey.register.options' => serialize($options)]);
+    Cache::put('passkey_register_challenge_'.$user->id, serialize($options), 300);
 
     $response = $this->actingAs($user)->postJson(route('passkey.register.store'), [
         'name'     => 'iPhone 15',
@@ -1016,7 +1023,7 @@ test('store returns 422 when credential_id already exists', function () {
         challenge: random_bytes(32),
         pubKeyCredParams: [],
     );
-    session(['passkey.register.options' => serialize($options)]);
+    Cache::put('passkey_register_challenge_'.$user->id, serialize($options), 300);
 
     $response = $this->actingAs($user)->postJson(route('passkey.register.store'), [
         'name'     => 'Duplicate',
@@ -1087,7 +1094,10 @@ class PasskeyController extends Controller
     public function registerOptions(Request $request): JsonResponse
     {
         $options = $this->webAuthn->generateRegistrationOptions($request->user());
-        session(['passkey.register.options' => serialize($options)]);
+        // Store in Cache keyed by user ID, not session. The "remember me" cookie
+        // triggers SessionGuard::migrate() between GET and POST, rotating the session
+        // ID and losing any session-stored challenge.
+        Cache::put('passkey_register_challenge_'.$request->user()->id, serialize($options), 300);
 
         return response()->json($options);
     }
@@ -1096,13 +1106,12 @@ class PasskeyController extends Controller
     {
         $request->validate(['name' => ['required', 'string', 'max:255']]);
 
-        $serialized = session('passkey.register.options');
+        $serialized = Cache::pull('passkey_register_challenge_'.$request->user()->id);
         if (! $serialized) {
             return response()->json(['message' => 'No active challenge. Please try again.'], 422);
         }
 
         $options = unserialize($serialized);
-        session()->forget('passkey.register.options');
 
         try {
             $source = $this->webAuthn->verifyRegistration(

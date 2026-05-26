@@ -58,6 +58,12 @@ jobs:
       - name: Run tests
         run: ./vendor/bin/pest
 
+      - name: Install ChromeDriver
+        run: php artisan dusk:chrome-driver --detect
+
+      - name: Run Dusk tests
+        run: php artisan dusk
+
   build-and-push:
     needs: test
     runs-on: ubuntu-latest

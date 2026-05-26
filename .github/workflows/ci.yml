@@ -138,7 +138,7 @@ jobs:
           APP_KEY: ${{ env.APP_KEY }}
           APP_URL: http://${{ steps.host-ip.outputs.ip }}:8000
           SESSION_DRIVER: file
-          CACHE_STORE: file
+          CACHE_STORE: array
 
       - name: Wait for server
         run: |

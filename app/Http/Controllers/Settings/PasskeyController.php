@@ -23,7 +23,7 @@ class PasskeyController extends Controller
     public function registerOptions(Request $request): Response
     {
         $options = $this->webAuthn->generateRegistrationOptions($request->user());
-        Cache::put('passkey_register_challenge_'.$request->user()->id, serialize($options), 300);
+        Cache::tags(['user:'.$request->user()->id])->put('passkey_register_challenge', serialize($options), 300);
 
         $serializer = (new WebauthnSerializerFactory(
             new AttestationStatementSupportManager([new NoneAttestationStatementSupport])
@@ -38,7 +38,7 @@ class PasskeyController extends Controller
     {
         $request->validate(['name' => ['required', 'string', 'max:255']]);
 
-        $serialized = Cache::pull('passkey_register_challenge_'.$request->user()->id);
+        $serialized = Cache::tags(['user:'.$request->user()->id])->pull('passkey_register_challenge');
 
         if (! $serialized) {
             return response()->json(['message' => 'No active challenge. Please try again.'], 422);

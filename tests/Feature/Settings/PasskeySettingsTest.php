@@ -35,7 +35,7 @@ test('registerOptions returns a challenge and stores it in session', function ()
 
     $response->assertOk();
     $response->assertJsonStructure(['challenge']);
-    expect(Cache::get('passkey_register_challenge_'.$user->id))->not->toBeNull();
+    expect(Cache::tags(['user:'.$user->id])->get('passkey_register_challenge'))->not->toBeNull();
 });
 
 test('store saves a new passkey for the authenticated user', function () {
@@ -70,7 +70,7 @@ test('store saves a new passkey for the authenticated user', function () {
         challenge: random_bytes(32),
         pubKeyCredParams: [],
     );
-    Cache::put('passkey_register_challenge_'.$user->id, serialize($options), 300);
+    Cache::tags(['user:'.$user->id])->put('passkey_register_challenge', serialize($options), 300);
 
     $response = $this->actingAs($user)->postJson(route('passkey.register.store'), [
         'name' => 'iPhone 15',
@@ -122,7 +122,7 @@ test('store returns 422 when credential_id already exists', function () {
         challenge: random_bytes(32),
         pubKeyCredParams: [],
     );
-    Cache::put('passkey_register_challenge_'.$user->id, serialize($options), 300);
+    Cache::tags(['user:'.$user->id])->put('passkey_register_challenge', serialize($options), 300);
 
     $response = $this->actingAs($user)->postJson(route('passkey.register.store'), [
         'name' => 'Duplicate',

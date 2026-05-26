@@ -106,10 +106,10 @@ jobs:
         run: sudo chmod -R 777 storage bootstrap/cache
 
       - name: Create database
-        run: touch /tmp/sprouter-dusk.sqlite
+        run: mkdir -p database && touch database/database.sqlite
 
       - name: Run migrations
-        run: php artisan migrate --env=dusk.local --force
+        run: php artisan migrate --force
 
       - name: Build assets
         run: npm run build
@@ -121,9 +121,11 @@ jobs:
           echo "ip=${HOST_IP}" >> "$GITHUB_OUTPUT"
 
       - name: Start Laravel server
-        run: php artisan serve --env=dusk.local --host=0.0.0.0 --port=8000 &
+        run: php artisan serve --host=0.0.0.0 --port=8000 &
         env:
           APP_URL: http://${{ steps.host-ip.outputs.ip }}:8000
+          SESSION_DRIVER: file
+          CACHE_STORE: file
 
       - name: Wait for server
         run: |
@@ -144,6 +146,10 @@ jobs:
         env:
           APP_URL: http://${{ steps.host-ip.outputs.ip }}:8000
           DUSK_DRIVER_URL: http://localhost:4444
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ${{ github.workspace }}/database/database.sqlite
+          SESSION_DRIVER: file
+          CACHE_STORE: file
 
   build-and-push:
     needs: [test, dusk-tests]

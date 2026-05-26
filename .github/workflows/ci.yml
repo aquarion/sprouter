@@ -120,6 +120,11 @@ jobs:
           HOST_IP=$(hostname -I | awk '{print $1}')
           echo "ip=${HOST_IP}" >> "$GITHUB_OUTPUT"
 
+      - name: Configure dusk environment
+        run: |
+          echo "APP_URL=http://${{ steps.host-ip.outputs.ip }}:8000" >> .env.dusk.local
+          echo "DB_DATABASE=${{ github.workspace }}/database/database.sqlite" >> .env.dusk.local
+
       - name: Start Laravel server
         run: php artisan serve --host=0.0.0.0 --port=8000 &
         env:
@@ -143,13 +148,6 @@ jobs:
 
       - name: Run Dusk tests
         run: php artisan dusk
-        env:
-          APP_URL: http://${{ steps.host-ip.outputs.ip }}:8000
-          DUSK_DRIVER_URL: http://localhost:4444
-          DB_CONNECTION: sqlite
-          DB_DATABASE: ${{ github.workspace }}/database/database.sqlite
-          SESSION_DRIVER: file
-          CACHE_STORE: file
 
   build-and-push:
     needs: [test, dusk-tests]

@@ -75,6 +75,16 @@ jobs:
         ports:
           - 4444:4444
 
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 3
+        ports:
+          - 6379:6379
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -84,6 +94,7 @@ jobs:
         with:
           php-version: '8.4'
           tools: composer:v2
+          extensions: redis
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -128,7 +139,9 @@ jobs:
             echo "DB_CONNECTION=sqlite"
             echo "DB_DATABASE=${{ github.workspace }}/database/database.sqlite"
             echo "SESSION_DRIVER=file"
-            echo "CACHE_STORE=file"
+            echo "CACHE_STORE=redis"
+            echo "REDIS_HOST=127.0.0.1"
+            echo "REDIS_PORT=6379"
             echo "QUEUE_CONNECTION=sync"
           } > .env.dusk.local
 
@@ -138,7 +151,9 @@ jobs:
           APP_KEY: ${{ env.APP_KEY }}
           APP_URL: http://${{ steps.host-ip.outputs.ip }}:8000
           SESSION_DRIVER: file
-          CACHE_STORE: array
+          CACHE_STORE: redis
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
 
       - name: Wait for server
         run: |

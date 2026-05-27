@@ -146,6 +146,9 @@ jobs:
   ci:
     needs: tag
     uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+      packages: write
     with:
       tag: ${{ needs.tag.outputs.next_version }}
     # Pass caller secrets into the reusable workflow (required for FIRTH_SSH_KEY, GITHUB_TOKEN, etc.)

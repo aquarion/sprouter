@@ -1,4 +1,6 @@
 import { Form, Head } from '@inertiajs/react';
+import { KeyRound } from 'lucide-react';
+import { useEffect } from 'react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import TextLink from '@/components/text-link';
@@ -7,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { usePasskey } from '@/hooks/use-passkey';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
@@ -22,6 +25,22 @@ export default function Login({
     canResetPassword,
     canRegister,
 }: Props) {
+    const {
+        isSupported,
+        loading,
+        error: passkeyError,
+        authenticate,
+        startConditional,
+        abortConditional,
+    } = usePasskey();
+
+    useEffect(() => {
+        if (isSupported) {
+            startConditional();
+            return abortConditional;
+        }
+    }, [isSupported, startConditional, abortConditional]);
+
     return (
         <>
             <Head title="Log in" />
@@ -43,7 +62,7 @@ export default function Login({
                                     required
                                     autoFocus
                                     tabIndex={1}
-                                    autoComplete="email"
+                                    autoComplete="username webauthn"
                                     placeholder="email@example.com"
                                 />
                                 <InputError message={errors.email} />
@@ -92,12 +111,45 @@ export default function Login({
                                 {processing && <Spinner />}
                                 Log in
                             </Button>
+
+                            {isSupported && (
+                                <>
+                                    <div className="relative flex items-center gap-3">
+                                        <div className="h-px flex-1 bg-border" />
+                                        <span className="text-sm text-muted-foreground">
+                                            or
+                                        </span>
+                                        <div className="h-px flex-1 bg-border" />
+                                    </div>
+
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="w-full"
+                                        tabIndex={6}
+                                        disabled={loading}
+                                        onClick={authenticate}
+                                        data-test="passkey-login-button"
+                                    >
+                                        {loading ? (
+                                            <Spinner />
+                                        ) : (
+                                            <KeyRound className="h-4 w-4" />
+                                        )}
+                                        Sign in with passkey
+                                    </Button>
+
+                                    {passkeyError && (
+                                        <InputError message={passkeyError} />
+                                    )}
+                                </>
+                            )}
                         </div>
 
                         {canRegister && (
                             <div className="text-center text-sm text-muted-foreground">
                                 Don't have an account?{' '}
-                                <TextLink href={register()} tabIndex={5}>
+                                <TextLink href={register()} tabIndex={7}>
                                     Sign up
                                 </TextLink>
                             </div>

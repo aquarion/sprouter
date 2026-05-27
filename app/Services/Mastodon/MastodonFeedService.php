@@ -79,10 +79,22 @@ class MastodonFeedService
 
     private function fetchTimeline(SocialAccount $account, array $params): array
     {
-        return Http::timeout(15)->withToken($account->access_token)
-            ->get("{$account->instance_url}/api/v1/timelines/home", $params)
-            ->throw()
-            ->json();
+        $response = Http::timeout(15)->withToken($account->access_token)
+            ->get("{$account->instance_url}/api/v1/timelines/home", $params);
+
+        // 401 means token is revoked — mark the account as needing reconnect
+        if ($response->status() === 401) {
+            $account->update(['auth_failed_at' => now()]);
+        }
+
+        $response->throw(); // throws for any 4xx/5xx
+
+        // Success — clear any previous auth failure flag
+        if ($account->auth_failed_at !== null) {
+            $account->update(['auth_failed_at' => null]);
+        }
+
+        return $response->json();
     }
 
     private function userCache(SocialAccount $account)

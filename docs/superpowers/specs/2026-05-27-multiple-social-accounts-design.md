@@ -26,9 +26,13 @@ Drop the existing `unique(['user_id', 'provider'])` constraint on `social_accoun
 
 `instance_url` is used for the Bluesky PDS URL (defaulting to `https://bsky.social`), making it consistently populated for both providers. MySQL treats `NULL != NULL` in unique indexes so a nullable column cannot be used as a uniqueness discriminator — storing the PDS URL here avoids that issue and removes the need for a separate column. Make `instance_url` non-nullable with a migration that backfills existing Bluesky rows with `https://bsky.social` before altering the column.
 
+### Schema addition
+
+Add a nullable `auth_failed_at` timestamp column to `social_accounts`. Set when token refresh fails with a non-retryable error (expired refresh token, revoked app password). Cleared on successful token refresh or reconnect.
+
 ### `connections` route data
 
-Include `id` in the selected fields passed to the connections page (currently omits it). `id` is required for targeted disconnect.
+Include `id` and `auth_failed_at` in the selected fields passed to the connections page (currently omits both). `id` is required for targeted disconnect; `auth_failed_at` drives the UI warning.
 
 ---
 
@@ -44,6 +48,7 @@ Include `id` in the selected fields passed to the connections page (currently om
 
 - `app.bsky.*` calls (timeline, profiles/banners) stay hardcoded to `https://bsky.social/xrpc` — this is the AppView and is correct for all AT Protocol users on the Bluesky network.
 - The internal `request()` method passes `$account->instance_url ?? 'https://bsky.social'` when calling `refreshSession`.
+- When `refreshSession` throws a non-retryable auth error (expired/revoked session), set `auth_failed_at = now()` on the account and re-throw so `FeedAggregator` can skip it. Clear `auth_failed_at` on successful refresh.
 
 ### `BlueskyController`
 
@@ -70,13 +75,13 @@ The `{account}` segment uses Laravel route model binding on `SocialAccount`. No 
 
 ### `SocialConnection` interface
 
-Add `id: number` field. `instance_url` already exists; for Bluesky it will now always be populated (the PDS URL).
+Add `id: number` and `auth_failed_at: string | null` fields. `instance_url` already exists; for Bluesky it will now always be populated (the PDS URL).
 
 ### Connections page layout
 
 Each provider panel shows:
 
-1. **List of connected accounts** — each row shows the handle (and instance URL for Mastodon) with an individual Disconnect button whose form action targets `/auth/{provider}/{id}`.
+1. **List of connected accounts** — each row shows the handle (and instance URL for Mastodon) with an individual Disconnect button whose form action targets `/auth/{provider}/{id}`. If `auth_failed_at` is set, the row shows a warning ("Needs reconnecting — credentials have expired") in place of the handle details.
 2. **Always-visible add form** below the list — same fields as today. Bluesky form gains an optional "PDS URL" field (placeholder `https://bsky.social`).
 
 ```
@@ -119,6 +124,7 @@ Covers display and disconnect flows. Connect flows (which require HTTP mocking) 
 - Multiple Bluesky accounts: all handles visible simultaneously
 - Disconnect a specific Mastodon account: that account removed, others remain
 - Disconnect a specific Bluesky account: that account removed, others remain
+- Account with `auth_failed_at` set: warning message visible on connections page
 
 ### Feature tests — additions to existing files
 
@@ -132,6 +138,10 @@ Covers display and disconnect flows. Connect flows (which require HTTP mocking) 
 **`BlueskyAuthTest`:**
 - `createSession` uses provided `pdsUrl` as base URL
 - `refreshSession` uses provided `pdsUrl` as base URL
+
+**`BlueskyFeedServiceTest`:**
+- Non-retryable auth failure during refresh sets `auth_failed_at` on the account
+- Successful token refresh clears `auth_failed_at` if previously set
 
 **`MastodonControllerTest`:**
 - Adding a second Mastodon account on a different instance succeeds
@@ -151,5 +161,5 @@ Covers display and disconnect flows. Connect flows (which require HTTP mocking) 
 - Renaming the `bluesky` provider enum value to `atproto` — cosmetic, high churn, separate issue if wanted.
 - Full AppView configurability (custom `app.bsky.*` endpoint) — separate issue.
 - Custom account labels/names — handle is sufficient as identifier.
-- Re-authentication flow for an existing account (updating tokens for a connected handle) — separate concern.
+- In-place re-authentication (updating tokens for an existing account without disconnecting) — tracked in issue #40.
 - Dusk tests for connect form submission (requires HTTP mocking from browser process) — feature tests cover this.

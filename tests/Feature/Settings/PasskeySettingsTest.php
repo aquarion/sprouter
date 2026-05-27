@@ -141,9 +141,9 @@ test('destroy deletes the passkey and sends email', function () {
     $passkey = Passkey::factory()->for($user)->create(['name' => 'MacBook']);
 
     $response = $this->actingAs($user)
-        ->deleteJson(route('passkey.destroy', $passkey));
+        ->delete(route('passkey.destroy', $passkey));
 
-    $response->assertOk();
+    $response->assertRedirect();
     $this->assertDatabaseMissing('passkeys', ['id' => $passkey->id]);
     Mail::assertSent(PasskeyInvalidated::class, fn ($mail) => $mail->automatic === false);
 });
@@ -154,7 +154,7 @@ test('destroy prevents deleting another user\'s passkey', function () {
     $passkey = Passkey::factory()->for($owner)->create();
 
     $response = $this->actingAs($attacker)
-        ->deleteJson(route('passkey.destroy', $passkey));
+        ->delete(route('passkey.destroy', $passkey));
 
     $response->assertForbidden();
     $this->assertDatabaseHas('passkeys', ['id' => $passkey->id]);

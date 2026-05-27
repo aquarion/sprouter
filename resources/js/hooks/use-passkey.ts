@@ -279,6 +279,10 @@ export function usePasskey(): UsePasskeyReturn {
 			return;
 		}
 
+		// Abort any in-progress conditional request before starting an explicit one —
+		// browsers disallow concurrent WebAuthn requests.
+		abortRef.current?.abort();
+
 		setLoading(true);
 		setError(null);
 
@@ -298,17 +302,26 @@ export function usePasskey(): UsePasskeyReturn {
 			return;
 		}
 
-		abortRef.current?.abort();
-		abortRef.current = new AbortController();
-		runAuthentication("conditional", abortRef.current.signal).catch(
-			(e: unknown) => {
-				if (
-					e instanceof Error &&
-					e.name !== "AbortError" &&
-					e.name !== "NotAllowedError"
-				) {
-					setError(e.message);
+		// Guard against browsers that support WebAuthn but not conditional mediation.
+		void PublicKeyCredential.isConditionalMediationAvailable?.().then(
+			(available) => {
+				if (!available) {
+					return;
 				}
+
+				abortRef.current?.abort();
+				abortRef.current = new AbortController();
+				runAuthentication("conditional", abortRef.current.signal).catch(
+					(e: unknown) => {
+						if (
+							e instanceof Error &&
+							e.name !== "AbortError" &&
+							e.name !== "NotAllowedError"
+						) {
+							setError(e.message);
+						}
+					},
+				);
 			},
 		);
 	}, [isSupported, runAuthentication]);

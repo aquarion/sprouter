@@ -7,9 +7,11 @@ use App\Mail\PasskeyInvalidated;
 use App\Models\Passkey;
 use App\Services\WebAuthn\WebAuthnService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 use Webauthn\AttestationStatement\AttestationStatementSupportManager;
@@ -52,7 +54,9 @@ class PasskeyController extends Controller
                 $options,
             );
         } catch (Throwable $e) {
-            return response()->json(['message' => 'Passkey verification failed: '.$e->getMessage()], 422);
+            Log::warning('Passkey registration verification failed', ['exception' => $e->getMessage()]);
+
+            return response()->json(['message' => 'Passkey verification failed. Please try again.'], 422);
         }
 
         $data = $this->webAuthn->credentialRecordToArray($source);
@@ -69,15 +73,15 @@ class PasskeyController extends Controller
         return response()->json($passkey->only('id', 'name', 'last_used_at', 'created_at'), 201);
     }
 
-    public function destroy(Request $request, Passkey $passkey): JsonResponse
+    public function destroy(Request $request, Passkey $passkey): RedirectResponse
     {
         if ($passkey->user_id !== $request->user()->id) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+            abort(403);
         }
 
         Mail::to($request->user()->email)->send(new PasskeyInvalidated($passkey, automatic: false));
         $passkey->delete();
 
-        return response()->json(['message' => 'Passkey removed.']);
+        return back();
     }
 }

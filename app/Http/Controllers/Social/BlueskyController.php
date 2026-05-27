@@ -26,6 +26,7 @@ class BlueskyController extends Controller
         SocialAccount::updateOrCreate(
             ['user_id' => $request->user()->id, 'provider' => 'bluesky'],
             [
+                'instance_url' => 'https://bsky.social',
                 'access_token' => $result['access_token'],
                 'token_secret' => $result['refresh_token'],
                 'handle' => $result['handle'],

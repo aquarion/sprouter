@@ -20,6 +20,7 @@ it('returns the timeline on a successful request', function () {
     $account = SocialAccount::factory()->create([
         'user_id' => $user->id,
         'provider' => 'bluesky',
+        'instance_url' => 'https://bsky.social',
         'access_token' => 'valid-token',        'token_secret' => 'refresh-token',    ]);
 
     Http::fake([

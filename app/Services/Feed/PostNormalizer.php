@@ -185,20 +185,25 @@ class PostNormalizer
             return [];
         }
 
-        if ($embed['$type'] === 'app.bsky.embed.images#view') {
+        if (($embed['$type'] ?? '') === 'app.bsky.embed.images#view') {
             return array_map(fn ($img) => [
                 'type' => 'image',
-                'url' => $img['fullsize'],
-                'preview_url' => $img['thumb'],
+                'url' => $this->safeUrl($img['fullsize'] ?? ''),
+                'preview_url' => $this->safeUrl($img['thumb'] ?? ''),
                 'alt_text' => $img['alt'] ?: null,
             ], $embed['images'] ?? []);
         }
 
-        if ($embed['$type'] === 'app.bsky.embed.video#view') {
+        if (($embed['$type'] ?? '') === 'app.bsky.embed.video#view') {
+            $playlist = $this->safeUrl($embed['playlist'] ?? '');
+            if ($playlist === '') {
+                return [];
+            }
+
             return [[
                 'type' => 'video',
-                'url' => $embed['playlist'],
-                'preview_url' => $embed['thumbnail'] ?? null,
+                'url' => $playlist,
+                'preview_url' => $this->safeUrl($embed['thumbnail'] ?? '') ?: null,
                 'alt_text' => $embed['alt'] ?? null,
             ]];
         }

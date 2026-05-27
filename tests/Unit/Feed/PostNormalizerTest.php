@@ -40,6 +40,36 @@ it('normalises a mastodon status to unified post format', function () {
         ->and($post['media'][0]['alt_text'])->toBe('A photo');
 });
 
+it('normalises a mastodon video attachment', function () {
+    $status = [
+        'id' => '999',
+        'content' => '',
+        'created_at' => '2024-01-15T12:00:00.000Z',
+        'url' => 'https://fosstodon.org/@bob/999',
+        'account' => [
+            'display_name' => 'Bob',
+            'acct' => 'bob',
+            'avatar' => 'https://fosstodon.org/avatars/bob.jpg',
+        ],
+        'media_attachments' => [
+            [
+                'type' => 'video',
+                'url' => 'https://fosstodon.org/media/video.mp4',
+                'preview_url' => 'https://fosstodon.org/media/video_thumb.jpg',
+                'description' => 'A cat video',
+            ],
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'fosstodon.org');
+
+    expect($post['media'])->toHaveCount(1)
+        ->and($post['media'][0]['type'])->toBe('video')
+        ->and($post['media'][0]['url'])->toBe('https://fosstodon.org/media/video.mp4')
+        ->and($post['media'][0]['preview_url'])->toBe('https://fosstodon.org/media/video_thumb.jpg')
+        ->and($post['media'][0]['alt_text'])->toBe('A cat video');
+});
+
 it('normalises a bluesky feed view post to unified post format', function () {
     $feedPost = [
         'post' => [
@@ -793,6 +823,62 @@ it('falls back to handle when bluesky reply_to parent has no displayName', funct
     $post = (new PostNormalizer)->fromBluesky($feedPost);
 
     expect($post['reply_to']['author_name'])->toBe('noname.bsky.social');
+});
+
+it('normalises a bluesky video embed post', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/vid1',
+            'record' => ['text' => '', 'createdAt' => '2024-01-15T12:00:00.000Z'],
+            'author' => [
+                'displayName' => 'Alice',
+                'handle' => 'alice.bsky.social',
+                'avatar' => 'https://cdn.bsky.app/avatar.jpg',
+            ],
+            'embed' => [
+                '$type' => 'app.bsky.embed.video#view',
+                'cid' => 'bafytest123',
+                'playlist' => 'https://video.bsky.app/watch/did:plc:abc/playlist.m3u8',
+                'thumbnail' => 'https://video.bsky.app/watch/did:plc:abc/thumbnail.jpg',
+                'alt' => 'A test video',
+            ],
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['media'])->toHaveCount(1)
+        ->and($post['media'][0]['type'])->toBe('video')
+        ->and($post['media'][0]['url'])->toBe('https://video.bsky.app/watch/did:plc:abc/playlist.m3u8')
+        ->and($post['media'][0]['preview_url'])->toBe('https://video.bsky.app/watch/did:plc:abc/thumbnail.jpg')
+        ->and($post['media'][0]['alt_text'])->toBe('A test video');
+});
+
+it('normalises a bluesky video embed post with no thumbnail', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/vid2',
+            'record' => ['text' => '', 'createdAt' => '2024-01-15T12:00:00.000Z'],
+            'author' => [
+                'displayName' => 'Alice',
+                'handle' => 'alice.bsky.social',
+                'avatar' => 'https://cdn.bsky.app/avatar.jpg',
+            ],
+            'embed' => [
+                '$type' => 'app.bsky.embed.video#view',
+                'cid' => 'bafytest456',
+                'playlist' => 'https://video.bsky.app/watch/did:plc:abc/playlist2.m3u8',
+            ],
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['media'])->toHaveCount(1)
+        ->and($post['media'][0]['type'])->toBe('video')
+        ->and($post['media'][0]['url'])->toBe('https://video.bsky.app/watch/did:plc:abc/playlist2.m3u8')
+        ->and($post['media'][0]['preview_url'])->toBeNull()
+        ->and($post['media'][0]['alt_text'])->toBeNull();
 });
 
 it('returns null reply_to when bluesky parent has no record text', function () {

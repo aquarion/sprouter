@@ -260,15 +260,22 @@ export function PostAnimator({
 		const firstMedia = post.media[0];
 
 		if (firstMedia) {
-			return (
-				<div className="flex h-full w-full items-center justify-center p-4">
-					<img
-						src={firstMedia.url}
-						alt={firstMedia.alt_text ?? ""}
-						className="max-h-full max-w-full rounded object-contain"
-					/>
-				</div>
-			);
+			const displaySrc =
+				firstMedia.type === "video"
+					? firstMedia.preview_url
+					: firstMedia.url;
+
+			if (displaySrc) {
+				return (
+					<div className="flex h-full w-full items-center justify-center p-4">
+						<img
+							src={displaySrc}
+							alt={firstMedia.alt_text ?? ""}
+							className="max-h-full max-w-full rounded object-contain"
+						/>
+					</div>
+				);
+			}
 		}
 
 		if (post.link_url || post.quoted_post || post.reply_to) {

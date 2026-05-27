@@ -47,7 +47,7 @@ it('saves a bluesky account with a custom PDS url', function () {
     $service = Mockery::mock(BlueskyAuthService::class);
     $service->shouldReceive('createSession')
         ->once()
-        ->with('alice.example.com', 'xxxx-xxxx', 'https://mypds.example.com')
+        ->with('alice.example.com', 'xxxx-xxxx', 'https://example.com')
         ->andReturn([
             'access_token' => 'access-jwt',
             'refresh_token' => 'refresh-jwt',
@@ -58,12 +58,12 @@ it('saves a bluesky account with a custom PDS url', function () {
     $this->actingAs($user)->post('/auth/bluesky', [
         'handle' => 'alice.example.com',
         'app_password' => 'xxxx-xxxx',
-        'pds_url' => 'https://mypds.example.com',
+        'pds_url' => 'https://example.com',
     ]);
 
     $this->assertDatabaseHas('social_accounts', [
         'provider' => 'bluesky',
-        'instance_url' => 'https://mypds.example.com',
+        'instance_url' => 'https://example.com',
     ]);
 });
 
@@ -118,6 +118,18 @@ it('redirects with bluesky-already-connected for a duplicate handle', function (
     $response->assertRedirect(route('connections.edit'));
     $response->assertSessionHas('status', 'bluesky-already-connected');
     $this->assertDatabaseCount('social_accounts', 1);
+});
+
+it('rejects a non-https pds_url', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->post('/auth/bluesky', [
+        'handle' => 'alice.bsky.social',
+        'app_password' => 'xxxx-xxxx',
+        'pds_url' => 'http://evil.example.com',
+    ]);
+
+    $response->assertSessionHasErrors('pds_url');
 });
 
 it('validates handle and app_password on store', function () {

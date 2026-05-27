@@ -194,6 +194,15 @@ class PostNormalizer
             ], $embed['images'] ?? []);
         }
 
+        if ($embed['$type'] === 'app.bsky.embed.video#view') {
+            return [[
+                'type' => 'video',
+                'url' => $embed['playlist'],
+                'preview_url' => $embed['thumbnail'] ?? null,
+                'alt_text' => $embed['alt'] ?? null,
+            ]];
+        }
+
         return [];
     }
 

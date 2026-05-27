@@ -36,6 +36,9 @@ return new class extends Migration
             $table->dropUnique(['user_id', 'provider', 'instance_url', 'handle']);
             $table->dropColumn('auth_failed_at');
             $table->string('instance_url')->nullable()->change();
+            // NOTE: This rollback is only safe if no multi-account data exists.
+            // If users have connected multiple accounts for the same provider,
+            // this will fail with a duplicate key violation.
             $table->unique(['user_id', 'provider']);
         });
     }

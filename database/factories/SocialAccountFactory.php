@@ -21,7 +21,9 @@ class SocialAccountFactory extends Factory
             'instance_url' => $provider === 'bluesky' ? 'https://bsky.social' : 'https://'.fake()->domainName(),
             'access_token' => fake()->sha256(),
             'token_secret' => null,
-            'handle' => '@'.fake()->userName().'@'.($provider === 'bluesky' ? 'bsky.social' : fake()->domainName()),
+            'handle' => $provider === 'bluesky'
+                ? '@'.fake()->userName().'.bsky.social'
+                : '@'.fake()->userName().'@'.fake()->domainName(),
             'auth_failed_at' => null,
         ];
     }

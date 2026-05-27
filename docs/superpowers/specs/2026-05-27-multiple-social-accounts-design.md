@@ -50,6 +50,12 @@ Include `id` and `auth_failed_at` in the selected fields passed to the connectio
 - The internal `request()` method passes `$account->instance_url ?? 'https://bsky.social'` when calling `refreshSession`.
 - When `refreshSession` throws a non-retryable auth error (expired/revoked session), set `auth_failed_at = now()` on the account and re-throw so `FeedAggregator` can skip it. Clear `auth_failed_at` on successful refresh.
 
+### `MastodonFeedService`
+
+- Mastodon OAuth tokens have no refresh mechanism — a 401 response means the token is revoked and the account needs reconnecting.
+- `fetchTimeline()` should detect a 401 response, set `auth_failed_at = now()` on the account, and re-throw so `FeedAggregator` can skip it. Other error codes (network errors, 5xx) should not set `auth_failed_at` — they are transient.
+- Clear `auth_failed_at` on a successful timeline fetch (in case it was set during a previous outage that misidentified a transient 401).
+
 ### `BlueskyController`
 
 - `store()`: replace `updateOrCreate(['user_id', 'provider'])` with a duplicate check then `create()`. If `(user_id, bluesky, instance_url, handle)` already exists, redirect back with status `bluesky-already-connected`. Saves `instance_url` (the PDS URL from form input, defaulting to `https://bsky.social`).
@@ -142,6 +148,11 @@ Covers display and disconnect flows. Connect flows (which require HTTP mocking) 
 **`BlueskyFeedServiceTest`:**
 - Non-retryable auth failure during refresh sets `auth_failed_at` on the account
 - Successful token refresh clears `auth_failed_at` if previously set
+
+**`MastodonFeedServiceTest`:**
+- 401 response from timeline API sets `auth_failed_at` on the account
+- Successful timeline fetch clears `auth_failed_at` if previously set
+- Non-401 errors (5xx, network timeout) do not set `auth_failed_at`
 
 **`MastodonControllerTest`:**
 - Adding a second Mastodon account on a different instance succeeds

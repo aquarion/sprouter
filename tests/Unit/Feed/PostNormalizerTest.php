@@ -40,6 +40,36 @@ it('normalises a mastodon status to unified post format', function () {
         ->and($post['media'][0]['alt_text'])->toBe('A photo');
 });
 
+it('normalises a mastodon video attachment', function () {
+    $status = [
+        'id' => '999',
+        'content' => '',
+        'created_at' => '2024-01-15T12:00:00.000Z',
+        'url' => 'https://fosstodon.org/@bob/999',
+        'account' => [
+            'display_name' => 'Bob',
+            'acct' => 'bob',
+            'avatar' => 'https://fosstodon.org/avatars/bob.jpg',
+        ],
+        'media_attachments' => [
+            [
+                'type' => 'video',
+                'url' => 'https://fosstodon.org/media/video.mp4',
+                'preview_url' => 'https://fosstodon.org/media/video_thumb.jpg',
+                'description' => 'A cat video',
+            ],
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'fosstodon.org');
+
+    expect($post['media'])->toHaveCount(1)
+        ->and($post['media'][0]['type'])->toBe('video')
+        ->and($post['media'][0]['url'])->toBe('https://fosstodon.org/media/video.mp4')
+        ->and($post['media'][0]['preview_url'])->toBe('https://fosstodon.org/media/video_thumb.jpg')
+        ->and($post['media'][0]['alt_text'])->toBe('A cat video');
+});
+
 it('normalises a bluesky feed view post to unified post format', function () {
     $feedPost = [
         'post' => [

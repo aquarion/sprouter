@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Social;
 
 use App\Http\Controllers\Controller;
-use App\Models\SocialAccount;
 use App\Services\Mastodon\MastodonOAuthService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -68,16 +67,6 @@ class MastodonController extends Controller
 
         return redirect()->route('connections.edit')
             ->with('status', 'mastodon-connected');
-    }
-
-    public function destroy(Request $request, SocialAccount $account)
-    {
-        abort_unless($account->user_id === $request->user()->id, 403);
-
-        $account->delete();
-
-        return redirect()->route('connections.edit')
-            ->with('status', 'mastodon-disconnected');
     }
 
     private function validateInstanceUrl(string $url): void

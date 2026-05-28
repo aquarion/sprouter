@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Social;
 
 use App\Http\Controllers\Controller;
-use App\Models\SocialAccount;
 use App\Services\Bluesky\BlueskyAuthService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -69,15 +68,5 @@ class BlueskyController extends Controller
         if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
             throw ValidationException::withMessages(['pds_url' => 'PDS URL is not allowed.']);
         }
-    }
-
-    public function destroy(Request $request, SocialAccount $account)
-    {
-        abort_unless($account->user_id === $request->user()->id, 403);
-
-        $account->delete();
-
-        return redirect()->route('connections.edit')
-            ->with('status', 'bluesky-disconnected');
     }
 }

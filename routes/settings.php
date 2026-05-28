@@ -4,6 +4,7 @@ use App\Http\Controllers\Settings\PasskeyController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Social\BlueskyController;
+use App\Http\Controllers\Social\ConnectionsController;
 use App\Http\Controllers\Social\MastodonController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -45,11 +46,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Mastodon OAuth
     Route::post('auth/mastodon', [MastodonController::class, 'redirect'])->name('mastodon.redirect');
     Route::get('auth/mastodon/callback', [MastodonController::class, 'callback'])->name('mastodon.callback');
-    Route::delete('auth/mastodon/{account}', [MastodonController::class, 'destroy'])->name('mastodon.destroy');
 
     // Bluesky app password
     Route::post('auth/bluesky', [BlueskyController::class, 'store'])->name('bluesky.store');
-    Route::delete('auth/bluesky/{account}', [BlueskyController::class, 'destroy'])->name('bluesky.destroy');
+
+    // Disconnect any social account
+    Route::delete('auth/connections/{account}', [ConnectionsController::class, 'destroy'])->name('connections.destroy');
 
     // Passkey management
     Route::get('settings/passkeys/register/options', [PasskeyController::class, 'registerOptions'])

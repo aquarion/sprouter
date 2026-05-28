@@ -141,7 +141,7 @@ test('disconnecting a mastodon account removes it and leaves others', function (
         'handle' => '@keep@fosstodon.org',
         'auth_failed_at' => null,
     ]);
-    SocialAccount::factory()->create([
+    $remove = SocialAccount::factory()->create([
         'user_id' => $user->id,
         'provider' => 'mastodon',
         'instance_url' => 'https://mastodon.social',
@@ -149,7 +149,7 @@ test('disconnecting a mastodon account removes it and leaves others', function (
         'auth_failed_at' => null,
     ]);
 
-    $this->browse(function (Browser $browser) use ($user) {
+    $this->browse(function (Browser $browser) use ($user, $remove) {
         $browser->visit('/login')
             ->waitFor('#email')
             ->type('email', $user->email)
@@ -160,7 +160,7 @@ test('disconnecting a mastodon account removes it and leaves others', function (
         $browser->visit('/settings/connections')
             ->assertSee('@remove@mastodon.social');
 
-        $browser->within('li:has(strong:contains("@remove@mastodon.social"))', function (Browser $li) {
+        $browser->within('@account-'.$remove->id, function (Browser $li) {
             $li->press('Disconnect');
         });
 
@@ -179,7 +179,7 @@ test('disconnecting a bluesky account removes it and leaves others', function ()
         'handle' => '@keep.bsky.social',
         'auth_failed_at' => null,
     ]);
-    SocialAccount::factory()->create([
+    $remove = SocialAccount::factory()->create([
         'user_id' => $user->id,
         'provider' => 'bluesky',
         'instance_url' => 'https://bsky.social',
@@ -187,7 +187,7 @@ test('disconnecting a bluesky account removes it and leaves others', function ()
         'auth_failed_at' => null,
     ]);
 
-    $this->browse(function (Browser $browser) use ($user) {
+    $this->browse(function (Browser $browser) use ($user, $remove) {
         $browser->visit('/login')
             ->waitFor('#email')
             ->type('email', $user->email)
@@ -198,7 +198,7 @@ test('disconnecting a bluesky account removes it and leaves others', function ()
         $browser->visit('/settings/connections')
             ->assertSee('@remove.bsky.social');
 
-        $browser->within('li:has(strong:contains("@remove.bsky.social"))', function (Browser $li) {
+        $browser->within('@account-'.$remove->id, function (Browser $li) {
             $li->press('Disconnect');
         });
 

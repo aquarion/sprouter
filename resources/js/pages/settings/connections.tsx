@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import bluesky from '@/routes/bluesky';
-import { edit } from '@/routes/connections';
+import { destroy as disconnectAccount, edit } from '@/routes/connections';
 import mastodon from '@/routes/mastodon';
 
 interface SocialConnection {
@@ -65,7 +65,7 @@ export default function Connections({
                     {mastodonConnections.length > 0 && (
                         <ul className="mb-4 space-y-2">
                             {mastodonConnections.map((c) => (
-                                <li key={c.id} className="flex items-center justify-between">
+                                <li key={c.id} dusk={`account-${c.id}`} className="flex items-center justify-between">
                                     {c.auth_failed_at ? (
                                         <p className="text-sm text-amber-600">
                                             <strong>{c.handle}</strong> — needs reconnecting (credentials expired)
@@ -76,7 +76,7 @@ export default function Connections({
                                             <span className="ml-1 text-xs">({c.instance_url})</span>
                                         </p>
                                     )}
-                                    <Form {...mastodon.destroy.form({ account: c.id })}>
+                                    <Form {...disconnectAccount.form({ account: c.id })}>
                                         {({ processing }) => (
                                             <Button
                                                 type="submit"
@@ -121,7 +121,7 @@ export default function Connections({
                     {blueskyConnections.length > 0 && (
                         <ul className="mb-4 space-y-2">
                             {blueskyConnections.map((c) => (
-                                <li key={c.id} className="flex items-center justify-between">
+                                <li key={c.id} dusk={`account-${c.id}`} className="flex items-center justify-between">
                                     {c.auth_failed_at ? (
                                         <p className="text-sm text-amber-600">
                                             <strong>{c.handle}</strong> — needs reconnecting (credentials expired)
@@ -131,7 +131,7 @@ export default function Connections({
                                             <strong>{c.handle}</strong>
                                         </p>
                                     )}
-                                    <Form {...bluesky.destroy.form({ account: c.id })}>
+                                    <Form {...disconnectAccount.form({ account: c.id })}>
                                         {({ processing }) => (
                                             <Button
                                                 type="submit"

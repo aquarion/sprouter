@@ -1,3 +1,4 @@
+import { Quote, Repeat2 } from "lucide-react";
 import type { Post } from "@/types/post";
 import { AuthorChip } from "./AuthorChip";
 
@@ -55,7 +56,7 @@ export function Attribution({ post }: { post: Post }) {
 						/>
 					</div>
 				)}
-				<span className="flex-shrink-0 text-white/30">❝</span>
+				<Quote className="size-4 flex-shrink-0 text-white/30" />
 				<a
 					href={post.original_url}
 					target="_blank"
@@ -74,7 +75,7 @@ export function Attribution({ post }: { post: Post }) {
 	}
 
 	if (post.boosted_by) {
-		const label = "↺";
+		const label = <Repeat2 className="size-4 flex-shrink-0" />;
 		return (
 			<div className="flex min-w-0 flex-1 items-center gap-2 text-left">
 				<a

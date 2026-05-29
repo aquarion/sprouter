@@ -57,3 +57,39 @@ it('refreshes a session with a refresh token', function () {
     expect($result['access_token'])->toBe('new-access-jwt')
         ->and($result['refresh_token'])->toBe('new-refresh-jwt');
 });
+
+it('creates a session using a custom PDS url', function () {
+    Http::fake([
+        'mypds.example.com/xrpc/com.atproto.server.createSession' => Http::response([
+            'accessJwt' => 'access-jwt-token',
+            'refreshJwt' => 'refresh-jwt-token',
+            'handle' => 'alice.example.com',
+            'did' => 'did:plc:abc123',
+        ]),
+    ]);
+
+    $service = new BlueskyAuthService;
+    $result = $service->createSession('alice.example.com', 'app-password-here', 'https://mypds.example.com');
+
+    expect($result['handle'])->toBe('@alice.example.com');
+
+    Http::assertSent(fn ($req) => $req->url() === 'https://mypds.example.com/xrpc/com.atproto.server.createSession'
+    );
+});
+
+it('refreshes a session using a custom PDS url', function () {
+    Http::fake([
+        'mypds.example.com/xrpc/com.atproto.server.refreshSession' => Http::response([
+            'accessJwt' => 'new-access-jwt',
+            'refreshJwt' => 'new-refresh-jwt',
+        ]),
+    ]);
+
+    $service = new BlueskyAuthService;
+    $result = $service->refreshSession('old-refresh-jwt', 'https://mypds.example.com');
+
+    Http::assertSent(fn ($req) => $req->url() === 'https://mypds.example.com/xrpc/com.atproto.server.refreshSession'
+    );
+
+    expect($result['access_token'])->toBe('new-access-jwt');
+});

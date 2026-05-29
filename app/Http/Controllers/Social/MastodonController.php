@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Social;
 
 use App\Http\Controllers\Controller;
-use App\Models\SocialAccount;
 use App\Services\Mastodon\MastodonOAuthService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -48,27 +47,26 @@ class MastodonController extends Controller
             redirectUri: route('mastodon.callback'),
         );
 
-        SocialAccount::updateOrCreate(
-            ['user_id' => $request->user()->id, 'provider' => 'mastodon'],
-            [
-                'instance_url' => $instance,
-                'access_token' => $result['access_token'],
-                'handle' => $result['handle'],
-            ]
-        );
+        $exists = $request->user()->socialAccounts()
+            ->where('provider', 'mastodon')
+            ->where('instance_url', $instance)
+            ->where('handle', $result['handle'])
+            ->exists();
+
+        if ($exists) {
+            return redirect()->route('connections.edit')
+                ->with('status', 'mastodon-already-connected');
+        }
+
+        $request->user()->socialAccounts()->create([
+            'provider' => 'mastodon',
+            'instance_url' => $instance,
+            'access_token' => $result['access_token'],
+            'handle' => $result['handle'],
+        ]);
 
         return redirect()->route('connections.edit')
             ->with('status', 'mastodon-connected');
-    }
-
-    public function destroy(Request $request)
-    {
-        $request->user()->socialAccounts()
-            ->where('provider', 'mastodon')
-            ->delete();
-
-        return redirect()->route('connections.edit')
-            ->with('status', 'mastodon-disconnected');
     }
 
     private function validateInstanceUrl(string $url): void

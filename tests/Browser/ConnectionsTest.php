@@ -122,7 +122,7 @@ test('disconnecting a mastodon account removes it and leaves others', function (
     $this->browse(function (Browser $browser) use ($user, $remove) {
         $browser->loginAs($user)
             ->visit('/settings/connections')
-            ->assertSee('@remove@mastodon.social');
+            ->waitForText('@remove@mastodon.social');
 
         $browser->within('@account-'.$remove->id, function (Browser $li) {
             $li->press('Disconnect');

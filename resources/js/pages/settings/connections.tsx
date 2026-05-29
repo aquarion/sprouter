@@ -2,6 +2,7 @@ import { Form, Head } from '@inertiajs/react';
 import { SiBluesky, SiMastodon } from 'react-icons/si';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import InstanceCombobox from '@/components/InstanceCombobox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -104,7 +105,7 @@ export default function Connections({
                                 <>
                                     <div className="space-y-1">
                                         <Label htmlFor="instance_url">Instance URL</Label>
-                                        <Input
+                                        <InstanceCombobox
                                             id="instance_url"
                                             name="instance_url"
                                             placeholder="https://mastodon.social"

@@ -24,27 +24,30 @@ export default function InstanceCombobox({ id, name, placeholder }: InstanceComb
     useEffect(() => {
         if (value.length < 2) {
             setSuggestions([])
+            setLoading(false)
             return
         }
 
         if (debounceRef.current) clearTimeout(debounceRef.current)
 
-        debounceRef.current = setTimeout(async () => {
+        const controller = new AbortController()
+
+        debounceRef.current = setTimeout(() => {
             setLoading(true)
-            try {
-                const res = await axios.get<Suggestion[]>(
-                    mastodon.instances.url({ query: { q: value } }),
-                )
-                setSuggestions(res.data)
-            } catch {
-                setSuggestions([])
-            } finally {
-                setLoading(false)
-            }
+            axios
+                .get<Suggestion[]>(mastodon.instances.url({ query: { q: value } }), {
+                    signal: controller.signal,
+                })
+                .then((res) => setSuggestions(res.data))
+                .catch((err) => {
+                    if (!axios.isCancel(err)) setSuggestions([])
+                })
+                .finally(() => setLoading(false))
         }, 300)
 
         return () => {
             if (debounceRef.current) clearTimeout(debounceRef.current)
+            controller.abort()
         }
     }, [value])
 

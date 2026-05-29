@@ -71,7 +71,13 @@ class HandleInertiaRequests extends Middleware
         if ($env === 'local') {
             $branch = $this->readGitHead();
 
-            return $branch ? ['label' => $branch, 'url' => "{$repo}/tree/{$branch}"] : null;
+            if (! $branch) {
+                return null;
+            }
+
+            $encoded = implode('/', array_map('rawurlencode', explode('/', $branch)));
+
+            return ['label' => $branch, 'url' => "{$repo}/tree/{$encoded}"];
         }
 
         return null;
@@ -85,7 +91,13 @@ class HandleInertiaRequests extends Middleware
             return null;
         }
 
-        $contents = trim(file_get_contents($path));
+        $contents = file_get_contents($path);
+
+        if ($contents === false) {
+            return null;
+        }
+
+        $contents = trim($contents);
 
         if (str_starts_with($contents, 'ref: refs/heads/')) {
             return substr($contents, strlen('ref: refs/heads/'));

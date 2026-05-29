@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Social;
 
 use App\Http\Controllers\Controller;
 use App\Services\Mastodon\MastodonOAuthService;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -23,7 +24,15 @@ class MastodonController extends Controller
 
         session(['mastodon_instance' => $instance]);
 
-        return redirect($this->oauth->getAuthorizeUrl($instance, $redirectUri));
+        try {
+            $authorizeUrl = $this->oauth->getAuthorizeUrl($instance, $redirectUri);
+        } catch (RequestException) {
+            throw ValidationException::withMessages([
+                'instance_url' => 'That doesn\'t appear to be a Mastodon instance.',
+            ]);
+        }
+
+        return redirect($authorizeUrl);
     }
 
     public function callback(Request $request)
@@ -81,7 +90,7 @@ class MastodonController extends Controller
         $ip = gethostbyname($host);
 
         if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-            throw ValidationException::withMessages(['instance_url' => 'Instance URL is not allowed.']);
+            throw ValidationException::withMessages(['instance_url' => 'Could not resolve that domain. Check the URL and try again.']);
         }
     }
 }

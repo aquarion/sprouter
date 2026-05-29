@@ -3,7 +3,9 @@
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\Mastodon\MastodonOAuthService;
+use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\RequestException;
 
 uses(RefreshDatabase::class);
 
@@ -33,6 +35,24 @@ it('validates instance_url on redirect', function () {
 
     $response = $this->actingAs($user)
         ->post('/auth/mastodon', ['instance_url' => 'not-a-url']);
+
+    $response->assertSessionHasErrors('instance_url');
+});
+
+it('returns a validation error when the instance is unreachable', function () {
+    $user = User::factory()->create();
+    $service = Mockery::mock(MastodonOAuthService::class);
+    $service->shouldReceive('getAuthorizeUrl')
+        ->once()
+        ->andThrow(new RequestException(
+            new Illuminate\Http\Client\Response(
+                new Response(404, [], '')
+            )
+        ));
+    $this->app->instance(MastodonOAuthService::class, $service);
+
+    $response = $this->actingAs($user)
+        ->post('/auth/mastodon', ['instance_url' => 'https://fosstodon.org']);
 
     $response->assertSessionHasErrors('instance_url');
 });

@@ -128,8 +128,7 @@ test('disconnecting a mastodon account removes it and leaves others', function (
             $li->press('Disconnect');
         });
 
-        $browser->waitForLocation('/settings/connections')
-            ->assertDontSee('@remove@mastodon.social')
+        $browser->waitUntilMissingText('@remove@mastodon.social')
             ->assertSee('@keep@fosstodon.org');
     });
 });
@@ -160,8 +159,7 @@ test('disconnecting a bluesky account removes it and leaves others', function ()
             $li->press('Disconnect');
         });
 
-        $browser->waitForLocation('/settings/connections')
-            ->assertDontSee('@remove.bsky.social')
+        $browser->waitUntilMissingText('@remove.bsky.social')
             ->assertSee('@keep.bsky.social');
     });
 });

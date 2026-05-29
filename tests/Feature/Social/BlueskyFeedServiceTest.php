@@ -21,7 +21,9 @@ it('returns the timeline on a successful request', function () {
         'user_id' => $user->id,
         'provider' => 'bluesky',
         'instance_url' => 'https://bsky.social',
-        'access_token' => 'valid-token',        'token_secret' => 'refresh-token',    ]);
+        'access_token' => 'valid-token',
+        'token_secret' => 'refresh-token',
+    ]);
 
     Http::fake([
         'bsky.social/xrpc/app.bsky.feed.getTimeline*' => Http::response([

@@ -12,7 +12,7 @@ interface SocialConnection {
     id: number;
     provider: 'mastodon' | 'bluesky';
     handle: string;
-    instance_url: string;
+    instance_url: string | null;
     auth_failed_at: string | null;
 }
 
@@ -67,7 +67,7 @@ export default function Connections({
                             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Connected</p>
                             <ul className="space-y-2">
                                 {mastodonConnections.map((c) => (
-                                    <li key={c.id} dusk={`account-${c.id}`} className="flex items-center justify-between rounded-md border px-3 py-2">
+                                    <li key={c.id} data-testid={`account-${c.id}`} className="flex items-center justify-between rounded-md border px-3 py-2">
                                         {c.auth_failed_at ? (
                                             <p className="text-sm text-amber-600">
                                                 <strong>{c.handle}</strong> — needs reconnecting (credentials expired)
@@ -75,7 +75,7 @@ export default function Connections({
                                         ) : (
                                             <p className="text-sm text-muted-foreground">
                                                 <strong>{c.handle}</strong>
-                                                <span className="ml-1 text-xs">({c.instance_url})</span>
+                                                {c.instance_url && <span className="ml-1 text-xs">({c.instance_url})</span>}
                                             </p>
                                         )}
                                         <Form {...disconnectAccount.form({ account: c.id })}>
@@ -122,7 +122,7 @@ export default function Connections({
                             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Connected</p>
                             <ul className="space-y-2">
                                 {blueskyConnections.map((c) => (
-                                    <li key={c.id} dusk={`account-${c.id}`} className="flex items-center justify-between rounded-md border px-3 py-2">
+                                    <li key={c.id} data-testid={`account-${c.id}`} className="flex items-center justify-between rounded-md border px-3 py-2">
                                         {c.auth_failed_at ? (
                                             <p className="text-sm text-amber-600">
                                                 <strong>{c.handle}</strong> — needs reconnecting (credentials expired)

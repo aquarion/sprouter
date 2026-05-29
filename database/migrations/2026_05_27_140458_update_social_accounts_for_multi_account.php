@@ -15,25 +15,29 @@ return new class extends Migration
             ->whereNull('instance_url')
             ->update(['instance_url' => 'https://bsky.social']);
 
+        // Add new index and column first, so user_id FK is covered before we drop the old index.
+        // MySQL refuses to drop an index if it's the only one covering a FK column.
         Schema::table('social_accounts', function (Blueprint $table) {
-            // Drop the old one-account-per-provider constraint
-            $table->dropUnique(['user_id', 'provider']);
-
-            // Add per-handle uniqueness constraint
             $table->unique(['user_id', 'provider', 'instance_url', 'handle']);
-
-            // Add auth failure timestamp
             $table->timestamp('auth_failed_at')->nullable()->after('handle');
+        });
+
+        // Now safe to drop: the new index already covers user_id for the FK constraint.
+        Schema::table('social_accounts', function (Blueprint $table) {
+            $table->dropUnique(['user_id', 'provider']);
         });
     }
 
     public function down(): void
     {
+        // Re-add the old index before dropping the new one (same FK coverage logic).
+        Schema::table('social_accounts', function (Blueprint $table) {
+            $table->unique(['user_id', 'provider']);
+        });
+
         Schema::table('social_accounts', function (Blueprint $table) {
             $table->dropUnique(['user_id', 'provider', 'instance_url', 'handle']);
             $table->dropColumn('auth_failed_at');
-            // NOTE: Only safe if no multi-account data exists.
-            $table->unique(['user_id', 'provider']);
         });
     }
 };

@@ -7,6 +7,7 @@ use App\Services\Mastodon\MastodonOAuthService;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 
 class MastodonController extends Controller
 {
@@ -14,6 +15,11 @@ class MastodonController extends Controller
 
     public function redirect(Request $request)
     {
+        $raw = $request->input('instance_url', '');
+        if ($raw && ! str_contains($raw, '://')) {
+            $request->merge(['instance_url' => 'https://'.$raw]);
+        }
+
         $request->validate(['instance_url' => 'required|url']);
 
         $instance = rtrim($request->input('instance_url'), '/');
@@ -32,7 +38,7 @@ class MastodonController extends Controller
             ]);
         }
 
-        return redirect($authorizeUrl);
+        return Inertia::location($authorizeUrl);
     }
 
     public function callback(Request $request)

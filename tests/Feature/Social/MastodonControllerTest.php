@@ -30,6 +30,21 @@ it('redirects to the mastodon oauth authorize url', function () {
     $this->assertEquals('https://fosstodon.org', session('mastodon_instance'));
 });
 
+it('prepends https:// to a bare domain', function () {
+    $user = User::factory()->create();
+    $service = Mockery::mock(MastodonOAuthService::class);
+    $service->shouldReceive('getAuthorizeUrl')
+        ->once()
+        ->with('https://fosstodon.org', Mockery::any())
+        ->andReturn('https://fosstodon.org/oauth/authorize?client_id=abc');
+    $this->app->instance(MastodonOAuthService::class, $service);
+
+    $response = $this->actingAs($user)
+        ->post('/auth/mastodon', ['instance_url' => 'fosstodon.org']);
+
+    $response->assertRedirect('https://fosstodon.org/oauth/authorize?client_id=abc');
+});
+
 it('validates instance_url on redirect', function () {
     $user = User::factory()->create();
 

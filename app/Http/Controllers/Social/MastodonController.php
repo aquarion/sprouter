@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Social;
 use App\Http\Controllers\Controller;
 use App\Services\Mastodon\MastodonOAuthService;
 use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -37,7 +36,7 @@ class MastodonController extends Controller
             throw ValidationException::withMessages([
                 'instance_url' => 'Could not connect to that Mastodon instance. Check the URL and try again.',
             ]);
-        } catch (RequestException) {
+        } catch (\Exception) {
             throw ValidationException::withMessages([
                 'instance_url' => 'That doesn\'t appear to be a Mastodon instance.',
             ]);

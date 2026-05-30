@@ -5,6 +5,7 @@ use App\Models\User;
 use App\Services\Bluesky\BlueskyAuthService;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 
 uses(RefreshDatabase::class);
@@ -160,6 +161,22 @@ it('returns a validation error on invalid credentials', function () {
     $response = $this->actingAs($user)->post('/auth/bluesky', [
         'handle' => 'test.bsky.social',
         'app_password' => 'wrong-password', // pragma: allowlist secret
+    ]);
+
+    $response->assertSessionHasErrors('app_password');
+});
+
+it('returns a validation error when the bluesky connection times out', function () {
+    $user = User::factory()->create();
+    $service = Mockery::mock(BlueskyAuthService::class);
+    $service->shouldReceive('createSession')
+        ->once()
+        ->andThrow(new ConnectionException('Connection timed out'));
+    $this->app->instance(BlueskyAuthService::class, $service);
+
+    $response = $this->actingAs($user)->post('/auth/bluesky', [
+        'handle' => 'test.bsky.social',
+        'app_password' => 'xxxx-xxxx',
     ]);
 
     $response->assertSessionHasErrors('app_password');

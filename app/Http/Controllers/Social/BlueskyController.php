@@ -7,6 +7,7 @@ use App\Services\Bluesky\BlueskyAuthService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class BlueskyController extends Controller
@@ -39,6 +40,12 @@ class BlueskyController extends Controller
             $message = $e->response->status() === 401
                 ? 'Invalid handle or app password.'
                 : 'Could not connect to Bluesky. Please try again.';
+
+            if ($e->response->status() !== 401) {
+                Log::warning('Bluesky createSession returned unexpected HTTP error', [
+                    'status' => $e->response->status(),
+                ]);
+            }
 
             throw ValidationException::withMessages(['app_password' => $message]);
         }

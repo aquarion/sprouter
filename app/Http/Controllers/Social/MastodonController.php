@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
@@ -39,7 +40,12 @@ class MastodonController extends Controller
             throw ValidationException::withMessages([
                 'instance_url' => 'Could not connect to that Mastodon instance. Check the URL and try again.',
             ]);
-        } catch (\Exception) {
+        } catch (\Exception $e) {
+            Log::error('Unexpected error during Mastodon OAuth setup', [
+                'instance' => $instance,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
             throw ValidationException::withMessages([
                 'instance_url' => 'That doesn\'t appear to be a Mastodon instance.',
             ]);
@@ -108,9 +114,15 @@ class MastodonController extends Controller
                     $servers = $response->json() ?? [];
                     Cache::put('mastodon_servers_list', $servers, 86400);
                 } else {
+                    Log::warning('Mastodon server list fetch returned non-success', [
+                        'status' => $response->status(),
+                    ]);
                     $servers = [];
                 }
-            } catch (\Exception) {
+            } catch (ConnectionException $e) {
+                Log::warning('Mastodon server list fetch failed', [
+                    'message' => $e->getMessage(),
+                ]);
                 $servers = [];
             }
         }
@@ -120,7 +132,7 @@ class MastodonController extends Controller
                 || str_contains(strtolower($s['description'] ?? ''), $q))
             ->take(8)
             ->map(fn ($s) => [
-                'name' => $s['domain'],
+                'name' => $s['domain'] ?? '',
                 'description' => trim(str_replace(["\r\n", "\r", "\n"], ' ', $s['description'] ?? '')),
             ])
             ->values();

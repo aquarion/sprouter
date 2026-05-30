@@ -104,6 +104,7 @@ export default [
 	},
 	{
 		ignores: [
+			".remember",
 			"vendor",
 			"node_modules",
 			"public",

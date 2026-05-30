@@ -5,7 +5,11 @@ namespace App\Http\Controllers\Social;
 use App\Http\Controllers\Controller;
 use App\Services\Mastodon\MastodonOAuthService;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
@@ -36,7 +40,12 @@ class MastodonController extends Controller
             throw ValidationException::withMessages([
                 'instance_url' => 'Could not connect to that Mastodon instance. Check the URL and try again.',
             ]);
-        } catch (\Exception) {
+        } catch (\Exception $e) {
+            Log::error('Unexpected error during Mastodon OAuth setup', [
+                'instance' => $instance,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
             throw ValidationException::withMessages([
                 'instance_url' => 'That doesn\'t appear to be a Mastodon instance.',
             ]);
@@ -86,6 +95,49 @@ class MastodonController extends Controller
 
         return redirect()->route('connections.edit')
             ->with('status', 'mastodon-connected');
+    }
+
+    public function instances(Request $request): JsonResponse
+    {
+        $q = strtolower(trim($request->string('q')->toString()));
+
+        if (mb_strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $servers = Cache::get('mastodon_servers_list');
+
+        if ($servers === null) {
+            try {
+                $response = Http::timeout(5)->get('https://api.joinmastodon.org/servers');
+                if ($response->successful()) {
+                    $servers = $response->json() ?? [];
+                    Cache::put('mastodon_servers_list', $servers, 86400);
+                } else {
+                    Log::warning('Mastodon server list fetch returned non-success', [
+                        'status' => $response->status(),
+                    ]);
+                    $servers = [];
+                }
+            } catch (ConnectionException $e) {
+                Log::warning('Mastodon server list fetch failed', [
+                    'message' => $e->getMessage(),
+                ]);
+                $servers = [];
+            }
+        }
+
+        $matches = collect($servers)
+            ->filter(fn ($s) => str_contains(strtolower($s['domain'] ?? ''), $q)
+                || str_contains(strtolower($s['description'] ?? ''), $q))
+            ->take(8)
+            ->map(fn ($s) => [
+                'name' => $s['domain'] ?? '',
+                'description' => trim(str_replace(["\r\n", "\r", "\n"], ' ', $s['description'] ?? '')),
+            ])
+            ->values();
+
+        return response()->json($matches);
     }
 
     private function validateInstanceUrl(string $url): void

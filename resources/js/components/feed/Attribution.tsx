@@ -3,9 +3,7 @@ import type { Post } from "@/types/post";
 import { AuthorChip } from "./AuthorChip";
 
 function timeSince(dateStr: string): string {
-	const seconds = Math.floor(
-		(Date.now() - new Date(dateStr).getTime()) / 1000,
-	);
+	const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
 
 	if (seconds < 60) {
 		return "just now";
@@ -75,7 +73,14 @@ export function Attribution({ post }: { post: Post }) {
 	}
 
 	if (post.boosted_by) {
-		const label = <Repeat2 className="size-4 flex-shrink-0" aria-label={post.source === "mastodon" ? "Boosted" : "Reposted"} />;
+		const label = (
+			<Repeat2
+				className="size-4 flex-shrink-0"
+				role="img"
+				aria-label={post.source === "mastodon" ? "Boosted" : "Reposted"}
+			/>
+		);
+
 		return (
 			<div className="flex min-w-0 flex-1 items-center gap-2 text-left">
 				<a

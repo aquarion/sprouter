@@ -46,6 +46,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Mastodon OAuth
     Route::post('auth/mastodon', [MastodonController::class, 'redirect'])->name('mastodon.redirect');
     Route::get('auth/mastodon/callback', [MastodonController::class, 'callback'])->name('mastodon.callback');
+    Route::get('auth/mastodon/instances', [MastodonController::class, 'instances'])->name('mastodon.instances');
 
     // Bluesky app password
     Route::post('auth/bluesky', [BlueskyController::class, 'store'])->name('bluesky.store');

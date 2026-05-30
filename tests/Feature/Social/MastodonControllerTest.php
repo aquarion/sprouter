@@ -5,7 +5,10 @@ use App\Models\User;
 use App\Services\Mastodon\MastodonOAuthService;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
@@ -164,4 +167,114 @@ it('redirects with mastodon-already-connected for a duplicate instance and handl
 
     $response->assertSessionHas('status', 'mastodon-already-connected');
     $this->assertDatabaseCount('social_accounts', 1);
+});
+
+it('returns a validation error when the mastodon instance connection times out', function () {
+    $user = User::factory()->create();
+    $service = Mockery::mock(MastodonOAuthService::class);
+    $service->shouldReceive('getAuthorizeUrl')
+        ->once()
+        ->andThrow(new ConnectionException('Connection timed out'));
+    $this->app->instance(MastodonOAuthService::class, $service);
+
+    $response = $this->actingAs($user)
+        ->post('/auth/mastodon', ['instance_url' => 'https://fosstodon.org']);
+
+    $response->assertSessionHasErrors('instance_url');
+});
+
+it('redirects guests away from mastodon instances', function () {
+    $response = $this->get('/auth/mastodon/instances?q=ma');
+
+    $response->assertRedirect('/login');
+});
+
+it('returns empty array when query is shorter than 2 characters', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->get('/auth/mastodon/instances?q=m');
+
+    $response->assertOk();
+    $response->assertExactJson([]);
+});
+
+it('returns filtered instances matching the query', function () {
+    Http::fake([
+        'api.joinmastodon.org/servers' => Http::response([
+            ['domain' => 'mastodon.social', 'description' => "The original server\r\n"],
+            ['domain' => 'fosstodon.org', 'description' => 'Open source focused'],
+            ['domain' => 'hachyderm.io', 'description' => 'A tech community'],
+        ], 200),
+    ]);
+
+    $user = User::factory()->create();
+    $response = $this->actingAs($user)->get('/auth/mastodon/instances?q=ma');
+
+    $response->assertOk();
+    $response->assertJson([
+        ['name' => 'mastodon.social', 'description' => 'The original server'],
+    ]);
+    // fosstodon.org does not contain 'ma'
+    $this->assertCount(1, $response->json());
+});
+
+it('returns empty array when the upstream fetch fails', function () {
+    Http::fake([
+        'api.joinmastodon.org/servers' => Http::response(null, 503),
+    ]);
+    Cache::forget('mastodon_servers_list');
+
+    $user = User::factory()->create();
+    $response = $this->actingAs($user)->get('/auth/mastodon/instances?q=ma');
+
+    $response->assertOk();
+    $response->assertExactJson([]);
+});
+
+it('caches the server list and does not re-fetch on subsequent requests', function () {
+    Http::fake([
+        'api.joinmastodon.org/servers' => Http::response([
+            ['domain' => 'mastodon.social', 'description' => 'The original server'],
+        ], 200),
+    ]);
+    Cache::forget('mastodon_servers_list');
+
+    $user = User::factory()->create();
+    $this->actingAs($user)->get('/auth/mastodon/instances?q=ma');
+    $this->actingAs($user)->get('/auth/mastodon/instances?q=ma');
+
+    Http::assertSentCount(1);
+});
+
+it('returns at most 8 instances even when more match the query', function () {
+    $servers = array_map(
+        fn ($i) => ['domain' => "mastodon-{$i}.social", 'description' => 'A mastodon instance'],
+        range(1, 12),
+    );
+
+    Http::fake(['api.joinmastodon.org/servers' => Http::response($servers, 200)]);
+    Cache::forget('mastodon_servers_list');
+
+    $user = User::factory()->create();
+    $response = $this->actingAs($user)->get('/auth/mastodon/instances?q=ma');
+
+    $response->assertOk();
+    $this->assertCount(8, $response->json());
+});
+
+it('matches instances by description as well as domain', function () {
+    Http::fake([
+        'api.joinmastodon.org/servers' => Http::response([
+            ['domain' => 'fosstodon.org', 'description' => 'Open source focused'],
+            ['domain' => 'hachyderm.io', 'description' => 'A tech community'],
+        ], 200),
+    ]);
+    Cache::forget('mastodon_servers_list');
+
+    $user = User::factory()->create();
+    $response = $this->actingAs($user)->get('/auth/mastodon/instances?q=open+source');
+
+    $response->assertOk();
+    $response->assertJson([['name' => 'fosstodon.org']]);
+    $this->assertCount(1, $response->json());
 });

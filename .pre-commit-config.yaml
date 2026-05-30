@@ -12,15 +12,15 @@ repos:
       hooks:
           - id: biome
             name: Biome
-            entry: npx biome check --write --unsafe --no-errors-on-unmatched
+            entry: npx biome format --write --no-errors-on-unmatched
             language: system
-            types_or: [javascript, ts, json]
+            types_or: [javascript, ts, tsx, jsx, json]
             pass_filenames: true
           - id: eslint
             name: ESLint
             entry: npx eslint --fix
             language: system
-            types_or: [javascript, ts]
+            types_or: [javascript, ts, tsx, jsx]
             pass_filenames: true
           - id: laravel-pint
             name: Laravel Pint

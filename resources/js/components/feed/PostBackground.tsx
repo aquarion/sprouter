@@ -9,21 +9,23 @@ export function PostBackground({ post }: { post: Post }) {
 
 	return (
 		<div
-			className="absolute inset-0"
+			className="absolute inset-0 overflow-hidden"
 			style={colors ? { backgroundColor: colors.background } : undefined}
 		>
 			{hasMedia && <MediaBackground media={post.media} />}
 			{hasBanner && (
-				<img
-					src={post.author_banner!}
-					alt=""
-					className="h-full w-full object-cover"
-					style={{
-						opacity: 0.9,
-						filter: "blur(24px)",
-						transform: "scale(1.1)",
-					}}
-				/>
+				<div className="pointer-events-none absolute inset-0 z-0">
+					<img
+						src={post.author_banner ?? ""}
+						alt=""
+						className="h-full w-full object-cover"
+						style={{
+							opacity: 0.9,
+							filter: "blur(24px)",
+							transform: "scale(1.1)",
+						}}
+					/>
+				</div>
 			)}
 		</div>
 	);

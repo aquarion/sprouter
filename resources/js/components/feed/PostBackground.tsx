@@ -1,22 +1,20 @@
-import { postColors } from "@/lib/post-colors";
+import { postDisplayColors } from "@/lib/post-colors";
 import type { Post } from "@/types/post";
 import { MediaBackground } from "./MediaBackground";
 
 export function PostBackground({ post }: { post: Post }) {
-	const hasMedia = post.media.length > 0;
-	const hasBanner = !hasMedia && !!post.author_banner;
-	const colors = hasMedia || hasBanner ? null : postColors(post.author_handle);
+	const colors = postDisplayColors(post);
 
 	return (
 		<div
 			className="absolute inset-0 overflow-hidden"
 			style={colors ? { backgroundColor: colors.background } : undefined}
 		>
-			{hasMedia && <MediaBackground media={post.media} />}
-			{hasBanner && (
+			{post.media.length > 0 && <MediaBackground media={post.media} />}
+			{!post.media.length && post.author_banner && (
 				<div className="pointer-events-none absolute inset-0 z-0">
 					<img
-						src={post.author_banner ?? ""}
+						src={post.author_banner}
 						alt=""
 						className="h-full w-full object-cover"
 						style={{

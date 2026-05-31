@@ -51,7 +51,7 @@ export function PostBackground({ post }: { post: Post }) {
                     src={post.author_banner!}
                     alt=""
                     className="h-full w-full object-cover"
-                    style={{ opacity: 0.9, filter: "blur(24px)", transform: "scale(1.1)" }}
+                    style={{ opacity: 0.7, filter: "blur(24px)", transform: "scale(1.1)" }}
                 />
             )}
         </div>

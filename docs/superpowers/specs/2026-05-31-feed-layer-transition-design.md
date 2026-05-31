@@ -58,14 +58,13 @@ Props: { post: Post }
 Background variants (same logic as current PostCard):
 - **Solid colour** — `postColors(post.author_handle).background` via inline `backgroundColor`
 - **Media** — renders `<MediaBackground media={post.media} />`
-- **Banner** — blurred, scaled banner image at opacity 0.9
+- **Banner** — blurred, scaled banner image at opacity 0.7
 - **Fallback** — black (no color, no media, no banner)
 
 ### `PostContent`
 
 `PostCard` with chrome and background stripped out. Contains only:
 - `PostAnimator` (text animation)
-- `Attribution` (author info)
 
 ```
 Props: { post: Post, onReady?: () => void }

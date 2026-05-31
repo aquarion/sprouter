@@ -37,8 +37,8 @@ export default function Feed({
 
 	// Bottom background layer shows this post. Updated only in onComplete (after
 	// bgRef is back at opacity 1) so it never changes while visible mid-crossfade.
-	const [nextBackground, setNextBackground] = useState<Post>(
-		() => initialPosts[1] ?? initialPosts[0],
+	const [nextBackground, setNextBackground] = useState<Post | null>(
+		() => initialPosts[1] ?? initialPosts[0] ?? null,
 	);
 
 	useEffect(() => {
@@ -66,7 +66,7 @@ export default function Feed({
 
 		// advance() shifts queue[0] → current, so queue[1] becomes the new queue[0].
 		// Capture now (before the queue changes) to update the bottom layer in onComplete.
-		const nextNext = queue[1] ?? queue[0] ?? current;
+		const nextNext: Post | null = queue[1] ?? queue[0] ?? current;
 
 		transitionEndRef.current = Date.now() + 700;
 
@@ -142,7 +142,7 @@ export default function Feed({
 			<div className="relative h-screen w-screen overflow-hidden bg-black">
 				{/* Background layer: bottom slot pre-renders next post's background */}
 				<div className="absolute inset-0 z-0">
-					<PostBackground post={nextBackground} />
+					<PostBackground post={nextBackground ?? current} />
 					<div ref={bgRef} className="absolute inset-0 bg-black">
 						<PostBackground post={current} />
 					</div>

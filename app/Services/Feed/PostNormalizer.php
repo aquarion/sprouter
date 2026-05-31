@@ -33,7 +33,9 @@ class PostNormalizer
             'source' => 'mastodon',
             'source_handle' => $sourceHandle,
             'author_name' => $source['account']['display_name'] ?: $source['account']['acct'],
-            'author_handle' => "@{$source['account']['acct']}@{$sourceHost}",
+            'author_handle' => str_contains($source['account']['acct'], '@')
+                ? "@{$source['account']['acct']}"
+                : "@{$source['account']['acct']}@{$sourceHost}",
             'author_avatar' => $this->safeUrl($source['account']['avatar']),
             'author_banner' => $this->safeUrl($source['account']['header'] ?? '') ?: null,
             'body' => $this->truncateBody($this->extractBody($source['content']), config('feed.body_limit', 1024)),

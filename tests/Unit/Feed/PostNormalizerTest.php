@@ -107,6 +107,21 @@ it('normalises a bluesky feed view post to unified post format', function () {
         ->and($post['media'][0]['alt_text'])->toBe('Sky photo');
 });
 
+it('does not double-append instance to federated mastodon author handle', function () {
+    $status = [
+        'id' => '1',
+        'content' => '<p>hello</p>',
+        'created_at' => '2024-01-15T10:00:00.000Z',
+        'url' => 'https://remote.social/@user@remote.social/1',
+        'account' => ['display_name' => 'User', 'acct' => 'user@remote.social', 'avatar' => ''],
+        'media_attachments' => [],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'myinstance.com');
+
+    expect($post['author_handle'])->toBe('@user@remote.social');
+});
+
 it('strips html entities from mastodon post body', function () {
     $status = [
         'id' => '1',

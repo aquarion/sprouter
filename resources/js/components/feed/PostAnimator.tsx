@@ -321,7 +321,7 @@ export function PostAnimator({
 			return;
 		}
 
-		gsap.fromTo(
+		const tween = gsap.fromTo(
 			panelsRef.current,
 			{ opacity: 0, y: -8 },
 			{
@@ -332,6 +332,8 @@ export function PostAnimator({
 				onComplete: () => onReadyRef.current?.(),
 			},
 		);
+
+		return () => tween.kill();
 	}, [post.id, body]);
 
 	if (!body) {

@@ -21,5 +21,5 @@ return [
     'context_body_limit' => env('FEED_CONTEXT_BODY_LIMIT', 300),
 
     // Maximum characters shown in main post body
-    'body_limit' => env('FEED_BODY_LIMIT', 1024),
+    'body_limit' => env('FEED_BODY_LIMIT', 512),
 ];

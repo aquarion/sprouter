@@ -46,7 +46,7 @@ class PostNormalizer
             'link_title' => $card ? ($card['title'] ?? null) : null,
             'link_favicon' => $this->faviconUrl($linkUrl),
             'reply_to' => $this->mastodonReplyTo($parentStatus, $host),
-            'quoted_post' => null,
+            'quoted_post' => $this->mastodonQuotedPost($source, $host, $quoteStatus),
             'boosted_by' => $booster,
             'boosted_by_avatar' => $boosterAccount ? $this->safeUrl($boosterAccount['avatar'] ?? '') : null,
             'boosted_by_handle' => $boosterAccount ? '@'.$boosterAccount['acct'] : null,
@@ -116,6 +116,27 @@ class PostNormalizer
                 $this->extractBody($parent['content'])
             ),
             'created_at' => $parent['created_at'] ?? null,
+        ];
+    }
+
+    private function mastodonQuotedPost(array $source, string $host, ?array $quoteStatus): ?array
+    {
+        $raw = $source['quote'] ?? $quoteStatus;
+
+        if ($raw === null) {
+            return null;
+        }
+
+        $acct = $raw['account']['acct'] ?? '';
+        $quoteHost = parse_url($raw['url'] ?? '', PHP_URL_HOST) ?? $host;
+
+        return [
+            'author_name' => ($raw['account']['display_name'] ?? '') ?: $acct,
+            'author_handle' => str_contains($acct, '@') ? "@{$acct}" : "@{$acct}@{$quoteHost}",
+            'author_avatar' => $this->safeUrl($raw['account']['avatar'] ?? ''),
+            'original_url' => $this->safeUrl($raw['url'] ?? ''),
+            'body' => $this->truncateBody($this->extractBody($raw['content'] ?? '')),
+            'created_at' => $raw['created_at'] ?? null,
         ];
     }
 

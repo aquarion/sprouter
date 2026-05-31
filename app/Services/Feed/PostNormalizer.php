@@ -48,6 +48,7 @@ class PostNormalizer
             'boosted_by' => $booster,
             'boosted_by_avatar' => $boosterAccount ? $this->safeUrl($boosterAccount['avatar'] ?? '') : null,
             'boosted_by_handle' => $boosterAccount ? '@'.$boosterAccount['acct'] : null,
+            'boosted_by_created_at' => $boosterAccount ? ($status['created_at'] ?? null) : null,
             'emojis' => $emojis,
         ];
     }
@@ -89,6 +90,7 @@ class PostNormalizer
             'boosted_by' => $booster,
             'boosted_by_avatar' => $repostBy ? $this->safeUrl($repostBy['avatar'] ?? '') : null,
             'boosted_by_handle' => $repostBy ? '@'.($repostBy['handle'] ?? '') : null,
+            'boosted_by_created_at' => $repostBy ? ($reason['indexedAt'] ?? null) : null,
             'emojis' => [],
         ];
     }
@@ -109,6 +111,7 @@ class PostNormalizer
             'body' => $this->truncateBody(
                 $this->extractBody($parent['content'])
             ),
+            'created_at' => $parent['created_at'] ?? null,
         ];
     }
 
@@ -126,6 +129,7 @@ class PostNormalizer
             'author_avatar' => $this->safeUrl($parent['author']['avatar'] ?? ''),
             'original_url' => $this->blueskyPostUrl($handle, $parent['uri'] ?? ''),
             'body' => $this->truncateBody($parent['record']['text']),
+            'created_at' => $parent['record']['createdAt'] ?? null,
         ];
     }
 
@@ -162,6 +166,7 @@ class PostNormalizer
             'author_avatar' => $this->safeUrl($record['author']['avatar'] ?? ''),
             'original_url' => $this->blueskyPostUrl($handle, $record['uri'] ?? ''),
             'body' => $this->truncateBody($text),
+            'created_at' => $record['value']['createdAt'] ?? null,
         ];
     }
 

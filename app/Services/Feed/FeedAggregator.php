@@ -34,10 +34,14 @@ class FeedAggregator
                     $statuses = $this->mastodon->getHomeTimeline($account, $perProviderLimit, $accountCursor);
 
                     $parents = $this->fetchMastodonStatuses($account, $statuses, fn ($s) => $s['in_reply_to_id'] ?? null);
+                    // Quote IDs point to foreign posts — they are never in the timeline batch,
+                    // so the batch short-circuit inside fetchMastodonStatuses is always bypassed here.
                     $quotes = $this->fetchMastodonStatuses($account, $statuses, fn ($s) => ($s['reblog'] ?? $s)['quote_id'] ?? null);
 
                     $normalised = array_map(function ($s) use ($host, $parents, $quotes, $account) {
                         $source = $s['reblog'] ?? $s;
+                        // $quoteId matches the key used by the extractor above, so $quotes[$quoteId] resolves
+                        // the pre-fetched status (or null if unavailable) to pass into the normalizer.
                         $quoteId = $source['quote_id'] ?? null;
 
                         return $this->normalizer->fromMastodon(
@@ -78,12 +82,6 @@ class FeedAggregator
         $nextCursor = ! empty($sorted) ? base64_encode(json_encode($cursors)) : null;
 
         return ['posts' => $sorted, 'next_cursor' => $nextCursor];
-    }
-
-    /** @internal exposed for testing only */
-    public function fetchMastodonStatusesPublic(SocialAccount $account, array $statuses, callable $idExtractor): array
-    {
-        return $this->fetchMastodonStatuses($account, $statuses, $idExtractor);
     }
 
     private function fetchMastodonStatuses(SocialAccount $account, array $statuses, callable $idExtractor): array

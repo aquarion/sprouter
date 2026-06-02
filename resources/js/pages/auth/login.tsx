@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { usePasskey } from "@/hooks/use-passkey";
 import { register } from "@/routes";
-import { create as recoverUrl } from "@/routes/recover";
+import { recover as recoverUrl } from "@/routes/passkey";
 
 type Props = {
 	status?: string;

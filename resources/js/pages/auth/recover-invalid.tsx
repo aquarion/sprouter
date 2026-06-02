@@ -1,7 +1,7 @@
 import { Head } from "@inertiajs/react";
 import { XCircle } from "lucide-react";
 import TextLink from "@/components/text-link";
-import { create } from "@/routes/recover";
+import { recover } from "@/routes/passkey";
 
 export default function RecoverInvalid() {
 	return (
@@ -12,7 +12,7 @@ export default function RecoverInvalid() {
 				<p className="text-sm text-muted-foreground">
 					This recovery link has expired or already been used.
 				</p>
-				<TextLink href={create()}>Request a new recovery link</TextLink>
+				<TextLink href={recover()}>Request a new recovery link</TextLink>
 			</div>
 		</>
 	);

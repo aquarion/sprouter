@@ -1,6 +1,8 @@
 name: CI
 
 on:
+  push:
+    branches: [dependabot-updates]
   pull_request:
     branches: ['**']
     types: [opened, synchronize, reopened]
@@ -64,7 +66,9 @@ jobs:
   build-and-push:
     needs: [test]
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: |
+      github.ref != 'refs/heads/dependabot-updates' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     permissions:
       contents: read
       packages: write

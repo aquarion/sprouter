@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { usePasskey } from "@/hooks/use-passkey";
 import { register } from "@/routes";
+import { create as recoverUrl } from "@/routes/recover";
 
 type Props = {
 	status?: string;
@@ -64,6 +65,12 @@ export default function Login({ status }: Props) {
 					Don't have an account?{" "}
 					<TextLink href={register()} tabIndex={0}>
 						Sign up
+					</TextLink>
+				</div>
+
+				<div className="text-center text-sm text-muted-foreground">
+					<TextLink href={recoverUrl()} tabIndex={0}>
+						Lost your passkey?
 					</TextLink>
 				</div>
 			</div>

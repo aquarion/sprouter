@@ -25,8 +25,7 @@ class PasskeyRecoveryController extends Controller
     {
         $request->validate(['email' => 'required|email']);
 
-        $email = strtolower($request->input('email'));
-        $user = User::where('email', $email)->first();
+        $user = User::where('email', strtolower($request->input('email')))->first();
 
         if ($user) {
             PasskeyRecoveryToken::where('user_id', $user->id)
@@ -56,9 +55,13 @@ class PasskeyRecoveryController extends Controller
 
     public function setup(string $token): RedirectResponse|Response
     {
-        $record = PasskeyRecoveryToken::where('token', hash('sha256', $token))->with('user')->first();
+        $record = PasskeyRecoveryToken::where('token', hash('sha256', $token))
+            ->whereNull('used_at')
+            ->where('created_at', '>', now()->subHour())
+            ->with('user')
+            ->first();
 
-        if (! $record || ! $record->isValid()) {
+        if (! $record) {
             return Inertia::render('auth/recover-invalid');
         }
 

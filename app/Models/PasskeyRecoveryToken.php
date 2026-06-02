@@ -19,14 +19,4 @@ class PasskeyRecoveryToken extends Model
     {
         return $this->belongsTo(User::class);
     }
-
-    public function isExpired(): bool
-    {
-        return $this->created_at->addHour()->isPast();
-    }
-
-    public function isValid(): bool
-    {
-        return $this->used_at === null && ! $this->isExpired();
-    }
 }

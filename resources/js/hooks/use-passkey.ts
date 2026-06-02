@@ -222,12 +222,14 @@ export function usePasskey(): UsePasskeyReturn {
 		[isSupported, fetchOptions, prepareCreationOptions],
 	);
 
-	const runAuthentication = useCallback(
+	const performAssertion = useCallback(
 		async (
+			optionsUrl: string,
+			assertUrl: string,
 			mediation: CredentialMediationRequirement,
 			signal?: AbortSignal,
-		): Promise<void> => {
-			const optionsRes = await fetch(authOptions.url(), {
+		): Promise<Response | null> => {
+			const optionsRes = await fetch(optionsUrl, {
 				headers: { Accept: "application/json" },
 			});
 
@@ -237,8 +239,8 @@ export function usePasskey(): UsePasskeyReturn {
 
 			const token = optionsRes.headers.get("X-Passkey-Token");
 			const raw = (await optionsRes.json()) as WebAuthnRequestOptions;
-
 			const options = prepareRequestOptions(raw);
+
 			const credential = (await navigator.credentials.get({
 				publicKey: options,
 				mediation,
@@ -246,24 +248,43 @@ export function usePasskey(): UsePasskeyReturn {
 			})) as PublicKeyCredentialWithResponse | null;
 
 			if (!credential) {
-				return;
+				return null;
 			}
 
-			const authHeaders: Record<string, string> = {
+			const headers: Record<string, string> = {
 				"Content-Type": "application/json",
 				Accept: "application/json",
 				"X-XSRF-TOKEN": getXsrfToken(),
 			};
 
 			if (token) {
-				authHeaders["X-Passkey-Token"] = token;
+				headers["X-Passkey-Token"] = token;
 			}
 
-			const res = await fetch(authenticateRoute.url(), {
+			return fetch(assertUrl, {
 				method: "POST",
-				headers: authHeaders,
+				headers,
 				body: JSON.stringify(serializeCredential(credential)),
 			});
+		},
+		[prepareRequestOptions],
+	);
+
+	const runAuthentication = useCallback(
+		async (
+			mediation: CredentialMediationRequirement,
+			signal?: AbortSignal,
+		): Promise<void> => {
+			const res = await performAssertion(
+				authOptions.url(),
+				authenticateRoute.url(),
+				mediation,
+				signal,
+			);
+
+			if (!res) {
+				return;
+			}
 
 			if (!res.ok) {
 				const body = (await res.json()) as { message?: string };
@@ -274,7 +295,7 @@ export function usePasskey(): UsePasskeyReturn {
 			const body = (await res.json()) as { redirect?: string };
 			router.visit(body.redirect ?? dashboard.url());
 		},
-		[prepareRequestOptions],
+		[performAssertion],
 	);
 
 	const authenticate = useCallback(async (): Promise<void> => {
@@ -342,42 +363,15 @@ export function usePasskey(): UsePasskeyReturn {
 		setError(null);
 
 		try {
-			const optionsRes = await fetch(confirmOptions.url(), {
-				headers: { Accept: "application/json" },
-			});
+			const res = await performAssertion(
+				confirmOptions.url(),
+				confirmRoute.url(),
+				"optional",
+			);
 
-			if (!optionsRes.ok) {
-				throw new Error("Failed to fetch WebAuthn options");
-			}
-
-			const token = optionsRes.headers.get("X-Passkey-Token");
-			const raw = (await optionsRes.json()) as WebAuthnRequestOptions;
-			const options = prepareRequestOptions(raw);
-
-			const credential = (await navigator.credentials.get({
-				publicKey: options,
-				mediation: "optional",
-			})) as PublicKeyCredentialWithResponse | null;
-
-			if (!credential) {
+			if (!res) {
 				return false;
 			}
-
-			const headers: Record<string, string> = {
-				"Content-Type": "application/json",
-				Accept: "application/json",
-				"X-XSRF-TOKEN": getXsrfToken(),
-			};
-
-			if (token) {
-				headers["X-Passkey-Token"] = token;
-			}
-
-			const res = await fetch(confirmRoute.url(), {
-				method: "POST",
-				headers,
-				body: JSON.stringify(serializeCredential(credential)),
-			});
 
 			if (!res.ok) {
 				const body = (await res.json()) as { message?: string };
@@ -395,7 +389,7 @@ export function usePasskey(): UsePasskeyReturn {
 		} finally {
 			setLoading(false);
 		}
-	}, [isSupported, prepareRequestOptions]);
+	}, [isSupported, performAssertion]);
 
 	useEffect(() => {
 		return () => abortRef.current?.abort();

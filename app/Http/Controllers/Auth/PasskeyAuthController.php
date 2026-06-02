@@ -52,11 +52,6 @@ class PasskeyAuthController extends Controller
         return response()->json(['redirect' => route('dashboard')]);
     }
 
-    public function confirmOptions(): Response
-    {
-        return $this->options();
-    }
-
     public function confirm(Request $request): JsonResponse
     {
         $result = $this->resolveVerifiedPasskey($request, $request->user()->id);

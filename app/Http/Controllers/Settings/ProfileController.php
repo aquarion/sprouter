@@ -30,7 +30,6 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         $user->fill($request->validated());
-        $user->email = strtolower($user->email);
         $user->save();
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Profile updated.')]);

@@ -20,6 +20,9 @@ class MastodonController extends Controller
 
     public function redirect(Request $request)
     {
+        // Clear any stale reauth key so a fresh connect never triggers the reauth path in callback
+        session()->forget('mastodon_reauth_account_id');
+
         $raw = $request->input('instance_url', '');
         if ($raw && ! str_contains($raw, '://')) {
             $request->merge(['instance_url' => 'https://'.$raw]);
@@ -36,7 +39,10 @@ class MastodonController extends Controller
 
     public function redirectReauth(Request $request, SocialAccount $account)
     {
-        abort_if($account->user_id !== $request->user()->id, 403);
+        abort_if(
+            $account->user_id !== $request->user()->id || $account->provider !== 'mastodon',
+            403,
+        );
 
         session(['mastodon_reauth_account_id' => $account->id]);
 
@@ -69,7 +75,11 @@ class MastodonController extends Controller
         $reAuthAccountId = session()->pull('mastodon_reauth_account_id');
 
         if ($reAuthAccountId) {
-            $account = $request->user()->socialAccounts()->find($reAuthAccountId);
+            // Scope to provider + instance to prevent a stale key updating the wrong account
+            $account = $request->user()->socialAccounts()
+                ->where('provider', 'mastodon')
+                ->where('instance_url', $instance)
+                ->find($reAuthAccountId);
 
             if ($account) {
                 $account->update([
@@ -150,6 +160,8 @@ class MastodonController extends Controller
 
     private function startOAuthFlow(string $instance): string
     {
+        $instance = rtrim($instance, '/');
+
         $this->validateInstanceUrl($instance);
 
         session(['mastodon_instance' => $instance]);

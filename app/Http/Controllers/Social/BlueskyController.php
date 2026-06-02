@@ -60,7 +60,7 @@ class BlueskyController extends Controller
 
     public function update(Request $request, SocialAccount $account)
     {
-        abort_if($account->user_id !== $request->user()->id, 403);
+        abort_if($account->user_id !== $request->user()->id || $account->provider !== 'bluesky', 403);
 
         $request->validate(['app_password' => 'required|string']);
 

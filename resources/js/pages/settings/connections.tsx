@@ -20,12 +20,12 @@ interface SocialConnection {
 
 function BlueskyReauthForm({ connection }: { connection: SocialConnection }) {
 	return (
-		<Form {...bluesky.update.form(connection)} className="mt-2 space-y-2">
-			{({ processing, errors }) => (
-				<>
-					<p className="text-sm text-amber-600">
-						<strong>{connection.handle}</strong> — credentials expired
-					</p>
+		<div className="space-y-2">
+			<p className="text-sm text-amber-600">
+				<strong>{connection.handle}</strong> — credentials expired
+			</p>
+			<Form {...bluesky.update.form(connection)}>
+				{({ processing, errors }) => (
 					<div className="flex items-start gap-2">
 						<div className="flex-1 space-y-1">
 							<Label htmlFor={`app_password_${connection.id}`}>
@@ -43,29 +43,52 @@ function BlueskyReauthForm({ connection }: { connection: SocialConnection }) {
 							Reconnect
 						</Button>
 					</div>
-				</>
-			)}
-		</Form>
+				)}
+			</Form>
+			<Form {...disconnectAccount.form({ account: connection.id })}>
+				{({ processing }) => (
+					<Button
+						type="submit"
+						variant="destructive"
+						size="sm"
+						disabled={processing}
+					>
+						Disconnect
+					</Button>
+				)}
+			</Form>
+		</div>
 	);
 }
 
 function MastodonReauthForm({ connection }: { connection: SocialConnection }) {
 	return (
-		<Form
-			{...mastodon.reauth.form(connection)}
-			className="flex items-center justify-between gap-2"
-		>
-			{({ processing }) => (
-				<>
-					<p className="text-sm text-amber-600">
-						<strong>{connection.handle}</strong> — credentials expired
-					</p>
-					<Button type="submit" disabled={processing} size="sm">
-						Reconnect
-					</Button>
-				</>
-			)}
-		</Form>
+		<div className="flex items-center justify-between gap-2">
+			<p className="text-sm text-amber-600">
+				<strong>{connection.handle}</strong> — credentials expired
+			</p>
+			<div className="flex gap-2">
+				<Form {...mastodon.reauth.form(connection)}>
+					{({ processing }) => (
+						<Button type="submit" disabled={processing} size="sm">
+							Reconnect
+						</Button>
+					)}
+				</Form>
+				<Form {...disconnectAccount.form({ account: connection.id })}>
+					{({ processing }) => (
+						<Button
+							type="submit"
+							variant="destructive"
+							size="sm"
+							disabled={processing}
+						>
+							Disconnect
+						</Button>
+					)}
+				</Form>
+			</div>
+		</div>
 	);
 }
 

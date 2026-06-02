@@ -18,6 +18,57 @@ interface SocialConnection {
 	auth_failed_at: string | null;
 }
 
+function BlueskyReauthForm({ connection }: { connection: SocialConnection }) {
+	return (
+		<Form {...bluesky.update.form(connection)} className="mt-2 space-y-2">
+			{({ processing, errors }) => (
+				<>
+					<p className="text-sm text-amber-600">
+						<strong>{connection.handle}</strong> — credentials expired
+					</p>
+					<div className="flex items-start gap-2">
+						<div className="flex-1 space-y-1">
+							<Label htmlFor={`app_password_${connection.id}`}>
+								New app password
+							</Label>
+							<Input
+								id={`app_password_${connection.id}`}
+								name="app_password"
+								type="password"
+								placeholder="xxxx-xxxx-xxxx-xxxx"
+							/>
+							<InputError message={errors.app_password} />
+						</div>
+						<Button type="submit" disabled={processing} className="mt-6">
+							Reconnect
+						</Button>
+					</div>
+				</>
+			)}
+		</Form>
+	);
+}
+
+function MastodonReauthForm({ connection }: { connection: SocialConnection }) {
+	return (
+		<Form
+			{...mastodon.reauth.form(connection)}
+			className="flex items-center justify-between gap-2"
+		>
+			{({ processing }) => (
+				<>
+					<p className="text-sm text-amber-600">
+						<strong>{connection.handle}</strong> — credentials expired
+					</p>
+					<Button type="submit" disabled={processing} size="sm">
+						Reconnect
+					</Button>
+				</>
+			)}
+		</Form>
+	);
+}
+
 export default function Connections({
 	connections,
 	status,
@@ -50,6 +101,11 @@ export default function Connections({
 						Mastodon account connected.
 					</div>
 				)}
+				{status === "mastodon-reconnected" && (
+					<div className="text-sm font-medium text-green-600">
+						Mastodon account reconnected.
+					</div>
+				)}
 				{status === "mastodon-disconnected" && (
 					<div className="text-sm font-medium text-green-600">
 						Mastodon account disconnected.
@@ -63,6 +119,11 @@ export default function Connections({
 				{status === "bluesky-connected" && (
 					<div className="text-sm font-medium text-green-600">
 						Bluesky account connected.
+					</div>
+				)}
+				{status === "bluesky-reconnected" && (
+					<div className="text-sm font-medium text-green-600">
+						Bluesky account reconnected.
 					</div>
 				)}
 				{status === "bluesky-disconnected" && (
@@ -92,35 +153,34 @@ export default function Connections({
 									<li
 										key={c.id}
 										data-testid={`account-${c.id}`}
-										className="flex items-center justify-between rounded-md border px-3 py-2"
+										className="rounded-md border px-3 py-2"
 									>
 										{c.auth_failed_at ? (
-											<p className="text-sm text-amber-600">
-												<strong>{c.handle}</strong> — needs reconnecting
-												(credentials expired)
-											</p>
+											<MastodonReauthForm connection={c} />
 										) : (
-											<p className="text-sm text-muted-foreground">
-												<strong>{c.handle}</strong>
-												{c.instance_url && (
-													<span className="ml-1 text-xs">
-														({c.instance_url})
-													</span>
-												)}
-											</p>
+											<div className="flex items-center justify-between">
+												<p className="text-sm text-muted-foreground">
+													<strong>{c.handle}</strong>
+													{c.instance_url && (
+														<span className="ml-1 text-xs">
+															({c.instance_url})
+														</span>
+													)}
+												</p>
+												<Form {...disconnectAccount.form({ account: c.id })}>
+													{({ processing }) => (
+														<Button
+															type="submit"
+															variant="destructive"
+															size="sm"
+															disabled={processing}
+														>
+															Disconnect
+														</Button>
+													)}
+												</Form>
+											</div>
 										)}
-										<Form {...disconnectAccount.form({ account: c.id })}>
-											{({ processing }) => (
-												<Button
-													type="submit"
-													variant="destructive"
-													size="sm"
-													disabled={processing}
-												>
-													Disconnect
-												</Button>
-											)}
-										</Form>
 									</li>
 								))}
 							</ul>
@@ -168,30 +228,29 @@ export default function Connections({
 									<li
 										key={c.id}
 										data-testid={`account-${c.id}`}
-										className="flex items-center justify-between rounded-md border px-3 py-2"
+										className="rounded-md border px-3 py-2"
 									>
 										{c.auth_failed_at ? (
-											<p className="text-sm text-amber-600">
-												<strong>{c.handle}</strong> — needs reconnecting
-												(credentials expired)
-											</p>
+											<BlueskyReauthForm connection={c} />
 										) : (
-											<p className="text-sm text-muted-foreground">
-												<strong>{c.handle}</strong>
-											</p>
+											<div className="flex items-center justify-between">
+												<p className="text-sm text-muted-foreground">
+													<strong>{c.handle}</strong>
+												</p>
+												<Form {...disconnectAccount.form({ account: c.id })}>
+													{({ processing }) => (
+														<Button
+															type="submit"
+															variant="destructive"
+															size="sm"
+															disabled={processing}
+														>
+															Disconnect
+														</Button>
+													)}
+												</Form>
+											</div>
 										)}
-										<Form {...disconnectAccount.form({ account: c.id })}>
-											{({ processing }) => (
-												<Button
-													type="submit"
-													variant="destructive"
-													size="sm"
-													disabled={processing}
-												>
-													Disconnect
-												</Button>
-											)}
-										</Form>
 									</li>
 								))}
 							</ul>

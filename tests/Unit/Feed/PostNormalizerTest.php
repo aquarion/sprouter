@@ -1254,6 +1254,22 @@ it('prefers inline quote field over pre-fetched quote status', function () {
     expect($post['quoted_post']['author_name'])->toBe('Inline Author');
 });
 
+it('sets quoted_post to null when mastodon 4.3 wrapper has null quoted_status (pending/rejected)', function () {
+    $status = [
+        'id' => '1',
+        'content' => '<p>post quoting a pending approval</p>',
+        'created_at' => '2024-01-15T10:00:00.000Z',
+        'url' => 'https://fosstodon.org/@user/1',
+        'account' => ['display_name' => 'User', 'acct' => 'user', 'avatar' => ''],
+        'media_attachments' => [],
+        'quote' => ['state' => 'pending', 'quoted_status' => null],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'fosstodon.org');
+
+    expect($post['quoted_post'])->toBeNull();
+});
+
 it('sets quoted_post to null when neither inline quote nor pre-fetched status is present', function () {
     $status = [
         'id' => '1',

@@ -1158,14 +1158,17 @@ it('sets quoted_post from inline mastodon quote field', function () {
         'account' => ['display_name' => 'User', 'acct' => 'user', 'avatar' => ''],
         'media_attachments' => [],
         'quote' => [
-            'id' => '99',
-            'content' => '<p>the quoted post</p>',
-            'created_at' => '2024-01-14T09:00:00.000Z',
-            'url' => 'https://mastodon.social/@author/99',
-            'account' => [
-                'display_name' => 'Quoted Author',
-                'acct' => 'author',
-                'avatar' => 'https://mastodon.social/avatars/author.jpg',
+            'state' => 'accepted',
+            'quoted_status' => [
+                'id' => '99',
+                'content' => '<p>the quoted post</p>',
+                'created_at' => '2024-01-14T09:00:00.000Z',
+                'url' => 'https://mastodon.social/@author/99',
+                'account' => [
+                    'display_name' => 'Quoted Author',
+                    'acct' => 'author',
+                    'avatar' => 'https://mastodon.social/avatars/author.jpg',
+                ],
             ],
         ],
     ];
@@ -1227,11 +1230,14 @@ it('prefers inline quote field over pre-fetched quote status', function () {
         'media_attachments' => [],
         'quote_id' => '99',
         'quote' => [
-            'id' => '99',
-            'content' => '<p>inline quote body</p>',
-            'created_at' => '2024-01-14T09:00:00.000Z',
-            'url' => 'https://mastodon.social/@inline/99',
-            'account' => ['display_name' => 'Inline Author', 'acct' => 'inline', 'avatar' => ''],
+            'state' => 'accepted',
+            'quoted_status' => [
+                'id' => '99',
+                'content' => '<p>inline quote body</p>',
+                'created_at' => '2024-01-14T09:00:00.000Z',
+                'url' => 'https://mastodon.social/@inline/99',
+                'account' => ['display_name' => 'Inline Author', 'acct' => 'inline', 'avatar' => ''],
+            ],
         ],
     ];
 
@@ -1246,6 +1252,22 @@ it('prefers inline quote field over pre-fetched quote status', function () {
     $post = (new PostNormalizer)->fromMastodon($status, 'fosstodon.org', quoteStatus: $quoteStatus);
 
     expect($post['quoted_post']['author_name'])->toBe('Inline Author');
+});
+
+it('sets quoted_post to null when mastodon 4.3 wrapper has null quoted_status (pending/rejected)', function () {
+    $status = [
+        'id' => '1',
+        'content' => '<p>post quoting a pending approval</p>',
+        'created_at' => '2024-01-15T10:00:00.000Z',
+        'url' => 'https://fosstodon.org/@user/1',
+        'account' => ['display_name' => 'User', 'acct' => 'user', 'avatar' => ''],
+        'media_attachments' => [],
+        'quote' => ['state' => 'pending', 'quoted_status' => null],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'fosstodon.org');
+
+    expect($post['quoted_post'])->toBeNull();
 });
 
 it('sets quoted_post to null when neither inline quote nor pre-fetched status is present', function () {
@@ -1272,14 +1294,17 @@ it('does not double-append instance to federated mastodon quoted post author han
         'account' => ['display_name' => 'User', 'acct' => 'user', 'avatar' => ''],
         'media_attachments' => [],
         'quote' => [
-            'id' => '99',
-            'content' => '<p>remote post</p>',
-            'created_at' => '2024-01-14T09:00:00.000Z',
-            'url' => 'https://remote.social/@remote@remote.social/99',
-            'account' => [
-                'display_name' => 'Remote User',
-                'acct' => 'remote@remote.social',
-                'avatar' => '',
+            'state' => 'accepted',
+            'quoted_status' => [
+                'id' => '99',
+                'content' => '<p>remote post</p>',
+                'created_at' => '2024-01-14T09:00:00.000Z',
+                'url' => 'https://remote.social/@remote@remote.social/99',
+                'account' => [
+                    'display_name' => 'Remote User',
+                    'acct' => 'remote@remote.social',
+                    'avatar' => '',
+                ],
             ],
         ],
     ];
@@ -1305,11 +1330,14 @@ it('sets quoted_post from inline quote on a boosted mastodon status', function (
             'account' => ['display_name' => 'Original', 'acct' => 'original', 'avatar' => ''],
             'media_attachments' => [],
             'quote' => [
-                'id' => '99',
-                'content' => '<p>the quoted post</p>',
-                'created_at' => '2024-01-14T09:00:00.000Z',
-                'url' => 'https://mastodon.social/@quoted/99',
-                'account' => ['display_name' => 'Quoted Author', 'acct' => 'quoted', 'avatar' => ''],
+                'state' => 'accepted',
+                'quoted_status' => [
+                    'id' => '99',
+                    'content' => '<p>the quoted post</p>',
+                    'created_at' => '2024-01-14T09:00:00.000Z',
+                    'url' => 'https://mastodon.social/@quoted/99',
+                    'account' => ['display_name' => 'Quoted Author', 'acct' => 'quoted', 'avatar' => ''],
+                ],
             ],
         ],
     ];

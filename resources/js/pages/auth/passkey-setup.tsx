@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { usePasskey } from "@/hooks/use-passkey";
 import { dashboard } from "@/routes";
-import { skip } from "@/routes/passkey/setup";
 
 export default function PasskeySetup() {
 	const { isSupported, loading, error, register } = usePasskey();
@@ -27,24 +26,27 @@ export default function PasskeySetup() {
 				<div className="space-y-2">
 					<h1 className="text-2xl font-semibold">Set up a passkey</h1>
 					<p className="max-w-sm text-sm text-muted-foreground">
-						Passkeys let you sign in with your fingerprint, face, or device PIN
-						— no password needed next time.
+						Passkeys let you sign in with your fingerprint, face, or device PIN.
+						You must add a passkey to access your account.
 					</p>
 				</div>
 
 				{error && <p className="text-sm text-destructive">{error}</p>}
 
-				<div className="flex w-full max-w-xs flex-col gap-3">
-					{isSupported && (
-						<Button onClick={handleSetup} disabled={loading}>
-							{loading ? <Spinner /> : <KeyRound className="h-4 w-4" />}
-							{loading ? "Setting up…" : "Set up passkey"}
-						</Button>
-					)}
-					<Button variant="ghost" onClick={() => router.post(skip.url())}>
-						Skip for now
+				{isSupported ? (
+					<Button
+						onClick={handleSetup}
+						disabled={loading}
+						className="w-full max-w-xs"
+					>
+						{loading ? <Spinner /> : <KeyRound className="h-4 w-4" />}
+						{loading ? "Setting up…" : "Set up passkey"}
 					</Button>
-				</div>
+				) : (
+					<p className="text-sm text-muted-foreground">
+						Your browser does not support passkeys. Please use a modern browser.
+					</p>
+				)}
 			</div>
 		</>
 	);
@@ -52,5 +54,5 @@ export default function PasskeySetup() {
 
 PasskeySetup.layout = {
 	title: "One more step",
-	description: "Add a passkey for faster, more secure sign-in",
+	description: "Add a passkey to secure your account",
 };

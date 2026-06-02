@@ -92,7 +92,7 @@ class PasskeyAuthController extends Controller
             'last_used_at' => now(),
         ]);
 
-        Auth::login($passkey->user, remember: true);
+        Auth::login($passkey->user);
 
         return response()->json(['redirect' => route('dashboard')]);
     }

@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasskeyAuthController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\FeedController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Vite;
@@ -41,17 +43,25 @@ Route::get('site.webmanifest', function () {
     ])->header('Content-Type', 'application/manifest+json');
 })->name('manifest.webmanifest');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware('auth')->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
     Route::get('feed', [FeedController::class, 'index'])->name('feed');
 });
 
 Route::middleware('guest')->group(function () {
+    Route::get('login', [AuthenticatedSessionController::class, 'create'])->name('login');
+    Route::get('register', [RegisteredUserController::class, 'create'])->name('register');
+    Route::post('register', [RegisteredUserController::class, 'store'])->name('register.store');
+
     Route::get('auth/passkey/options', [PasskeyAuthController::class, 'options'])
         ->name('passkey.auth.options');
     Route::post('auth/passkey/authenticate', [PasskeyAuthController::class, 'authenticate'])
         ->middleware('throttle:10,1')
         ->name('passkey.auth.authenticate');
 });
+
+Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
+    ->middleware('auth')
+    ->name('logout');
 
 require __DIR__.'/settings.php';

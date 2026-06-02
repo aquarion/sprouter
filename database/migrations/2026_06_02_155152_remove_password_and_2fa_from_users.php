@@ -9,14 +9,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn([
+            $columns = [
                 'password',
                 'remember_token',
                 'email_verified_at',
                 'two_factor_secret',
                 'two_factor_recovery_codes',
                 'two_factor_confirmed_at',
-            ]);
+            ];
+            $existing = array_filter($columns, fn ($col) => Schema::hasColumn('users', $col));
+            if ($existing) {
+                $table->dropColumn(array_values($existing));
+            }
         });
 
         Schema::dropIfExists('password_reset_tokens');

@@ -19,11 +19,20 @@ function reducer(state: State, action: Action): State {
 		}
 
 		case "enqueue": {
-			const seen = new Set(state.current ? [state.current.id] : []);
-			const deduped = action.posts.filter((p) => !seen.has(p.id));
-			const merged = [...state.queue, ...deduped]
-				.filter((p, i, arr) => arr.findIndex((q) => q.id === p.id) === i)
-				.sort((a, b) => b.created_at.localeCompare(a.created_at));
+			const seen = new Set<string>([
+				...(state.current ? [state.current.id] : []),
+				...state.queue.map((p) => p.id),
+			]);
+			const merged = [
+				...state.queue,
+				...action.posts.filter((p) => {
+					if (seen.has(p.id)) {
+						return false;
+					}
+					seen.add(p.id);
+					return true;
+				}),
+			].sort((a, b) => b.created_at.localeCompare(a.created_at));
 
 			// If current drained to null (e.g. fetchMore lagged behind advances),
 			// promote the first incoming post automatically.

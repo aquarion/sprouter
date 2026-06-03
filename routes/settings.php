@@ -10,26 +10,21 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'passkey.exists'])->group(function () {
     Route::redirect('settings', '/settings/profile');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('settings/profile', [ProfileController::class, 'destroy'])
+        ->middleware('passkey.confirmed')
+        ->name('profile.destroy');
 
-    Route::get('register/passkey', fn () => Inertia::render('auth/passkey-setup'))
-        ->name('passkey.setup');
-    Route::post('register/passkey/skip', fn () => redirect()->route('dashboard'))
-        ->name('passkey.setup.skip');
-});
-
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // Passkey setup — excluded from EnsurePasskeyExists so new/recovered users can enrol
+    Route::get('register/passkey', fn (Request $request) => Inertia::render('auth/passkey-setup', [
+        'status' => $request->session()->get('status'),
+    ]))->name('passkey.setup');
 
     Route::get('settings/security', [SecurityController::class, 'edit'])->name('security.edit');
-
-    Route::put('settings/password', [SecurityController::class, 'update'])
-        ->middleware('throttle:6,1')
-        ->name('user-password.update');
 
     Route::inertia('settings/appearance', 'settings/appearance')->name('appearance.edit');
 
@@ -58,7 +53,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Disconnect any social account
     Route::delete('auth/connections/{account}', [ConnectionsController::class, 'destroy'])->name('connections.destroy');
 
-    // Passkey management
+    // Passkey management — register routes excluded from EnsurePasskeyExists
     Route::get('settings/passkeys/register/options', [PasskeyController::class, 'registerOptions'])
         ->name('passkey.register.options');
     Route::post('settings/passkeys/register', [PasskeyController::class, 'store'])

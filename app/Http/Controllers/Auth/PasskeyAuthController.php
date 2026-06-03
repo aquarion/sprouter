@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Throwable;
@@ -25,9 +26,48 @@ class PasskeyAuthController extends Controller
 
     public function options(): Response
     {
-        $options = $this->webAuthn->generateAuthenticationOptions();
+        return $this->buildOptionsResponse(
+            $this->webAuthn->generateAuthenticationOptions(),
+            'passkey_auth',
+        );
+    }
+
+    public function authenticate(Request $request): JsonResponse
+    {
+        $result = $this->resolveVerifiedPasskey($request, cachePrefix: 'passkey_auth');
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
+
+        Auth::login($result['passkey']->user);
+
+        return response()->json(['redirect' => route('dashboard')]);
+    }
+
+    public function confirmOptions(Request $request): Response
+    {
+        return $this->buildOptionsResponse(
+            $this->webAuthn->generateAuthenticationOptionsForUser($request->user()),
+            'passkey_confirm',
+        );
+    }
+
+    public function confirm(Request $request): JsonResponse
+    {
+        $result = $this->resolveVerifiedPasskey($request, $request->user()->id, 'passkey_confirm');
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
+
+        $request->session()->put('passkey_confirmed_at', time());
+
+        return response()->json(['confirmed' => true]);
+    }
+
+    private function buildOptionsResponse(mixed $options, string $cachePrefix): Response
+    {
         $token = Str::random(40);
-        Cache::put("passkey_auth:{$token}", serialize($options), 300);
+        Cache::put("{$cachePrefix}:{$token}", serialize($options), 300);
 
         $serializer = (new WebauthnSerializerFactory(
             new AttestationStatementSupportManager([new NoneAttestationStatementSupport])
@@ -39,22 +79,31 @@ class PasskeyAuthController extends Controller
         ]);
     }
 
-    public function authenticate(Request $request): JsonResponse
-    {
+    /** @return array{passkey: Passkey}|JsonResponse */
+    private function resolveVerifiedPasskey(
+        Request $request,
+        ?int $requiredUserId = null,
+        string $cachePrefix = 'passkey_auth',
+    ): array|JsonResponse {
         $token = $request->header('X-Passkey-Token');
-        $serialized = $token ? Cache::pull("passkey_auth:{$token}") : null;
+        $serialized = $token ? Cache::pull("{$cachePrefix}:{$token}") : null;
         if (! $serialized) {
             return response()->json(['message' => 'No active challenge. Please try again.'], 422);
         }
 
-        $options = unserialize($serialized);
+        try {
+            $options = unserialize($serialized);
+        } catch (Throwable $e) {
+            Log::warning('Failed to unserialize passkey challenge', ['exception' => $e->getMessage()]);
+
+            return response()->json(['message' => 'No active challenge. Please try again.'], 422);
+        }
 
         $rawId = $request->input('rawId');
         if (! is_string($rawId) || $rawId === '') {
             return response()->json(['message' => 'Invalid credential.'], 422);
         }
 
-        // base64url → base64: swap alphabet chars and restore padding
         $base64 = strtr($rawId, '-_', '+/');
         $padded = str_pad($base64, (int) ceil(strlen($base64) / 4) * 4, '=');
         $decoded = base64_decode($padded, strict: true);
@@ -63,7 +112,12 @@ class PasskeyAuthController extends Controller
         }
         $credentialId = base64_encode($decoded);
 
-        $passkey = Passkey::where('credential_id', $credentialId)->first();
+        $query = Passkey::where('credential_id', $credentialId);
+        if ($requiredUserId !== null) {
+            $query->where('user_id', $requiredUserId);
+        }
+        $passkey = $query->first();
+
         if (! $passkey) {
             return response()->json(['message' => 'Passkey not recognised.'], 401);
         }
@@ -74,11 +128,18 @@ class PasskeyAuthController extends Controller
                 $options,
                 $passkey,
             );
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            Log::warning('Passkey authentication verification failed', [
+                'exception' => $e->getMessage(),
+                'user_id' => $requiredUserId,
+            ]);
+
             return response()->json(['message' => 'Passkey verification failed.'], 401);
         }
 
-        if ($source->counter < $passkey->sign_count) {
+        // A counter of 0 means the authenticator doesn't implement counters; only check for
+        // equal-or-lower counters when the authenticator tracks them, per WebAuthn §6.1.
+        if ($source->counter !== 0 && $source->counter <= $passkey->sign_count) {
             /** @var User $user */
             $user = $passkey->user;
             Mail::to($user->email)->send(new PasskeyInvalidated($passkey, automatic: true));
@@ -92,8 +153,6 @@ class PasskeyAuthController extends Controller
             'last_used_at' => now(),
         ]);
 
-        Auth::login($passkey->user, remember: true);
-
-        return response()->json(['redirect' => route('dashboard')]);
+        return ['passkey' => $passkey];
     }
 }

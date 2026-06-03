@@ -1,9 +1,7 @@
-import { Form } from "@inertiajs/react";
-import { useRef } from "react";
+import { router } from "@inertiajs/react";
 import ProfileController from "@/actions/App/Http/Controllers/Settings/ProfileController";
 import Heading from "@/components/heading";
 import InputError from "@/components/input-error";
-import PasswordInput from "@/components/password-input";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -14,10 +12,19 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
+import { usePasskey } from "@/hooks/use-passkey";
 
 export default function DeleteUser() {
-	const passwordInput = useRef<HTMLInputElement>(null);
+	const { confirmIdentity, loading, error } = usePasskey();
+
+	const handleDelete = async () => {
+		const confirmed = await confirmIdentity();
+
+		if (confirmed) {
+			router.delete(ProfileController.destroy.url(), { preserveScroll: true });
+		}
+	};
 
 	return (
 		<div className="space-y-6">
@@ -46,59 +53,26 @@ export default function DeleteUser() {
 						</DialogTitle>
 						<DialogDescription>
 							Once your account is deleted, all of its resources and data will
-							also be permanently deleted. Please enter your password to confirm
-							you would like to permanently delete your account.
+							also be permanently deleted. This action cannot be undone.
 						</DialogDescription>
 
-						<Form
-							{...ProfileController.destroy.form()}
-							options={{
-								preserveScroll: true,
-							}}
-							onError={() => passwordInput.current?.focus()}
-							resetOnSuccess
-							className="space-y-6"
-						>
-							{({ resetAndClearErrors, processing, errors }) => (
-								<>
-									<div className="grid gap-2">
-										<Label htmlFor="password" className="sr-only">
-											Password
-										</Label>
+						{error && <InputError message={error} />}
 
-										<PasswordInput
-											id="password"
-											name="password"
-											ref={passwordInput}
-											placeholder="Password"
-											autoComplete="current-password"
-										/>
+						<DialogFooter className="gap-2">
+							<DialogClose asChild>
+								<Button variant="secondary">Cancel</Button>
+							</DialogClose>
 
-										<InputError message={errors.password} />
-									</div>
-
-									<DialogFooter className="gap-2">
-										<DialogClose asChild>
-											<Button
-												variant="secondary"
-												onClick={() => resetAndClearErrors()}
-											>
-												Cancel
-											</Button>
-										</DialogClose>
-
-										<Button variant="destructive" disabled={processing} asChild>
-											<button
-												type="submit"
-												data-test="confirm-delete-user-button"
-											>
-												Delete account
-											</button>
-										</Button>
-									</DialogFooter>
-								</>
-							)}
-						</Form>
+							<Button
+								variant="destructive"
+								disabled={loading}
+								onClick={handleDelete}
+								data-test="confirm-delete-user-button"
+							>
+								{loading && <Spinner />}
+								Delete account
+							</Button>
+						</DialogFooter>
 					</DialogContent>
 				</Dialog>
 			</div>

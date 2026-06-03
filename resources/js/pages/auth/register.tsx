@@ -1,6 +1,5 @@
 import { Form, Head } from "@inertiajs/react";
 import InputError from "@/components/input-error";
-import PasswordInput from "@/components/password-input";
 import TextLink from "@/components/text-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +14,6 @@ export default function Register() {
 			<Head title="Register" />
 			<Form
 				{...store.form()}
-				resetOnSuccess={["password", "password_confirmation"]}
 				disableWhileProcessing
 				className="flex flex-col gap-6"
 			>
@@ -29,7 +27,7 @@ export default function Register() {
 									type="text"
 									required
 									autoFocus
-									tabIndex="0"
+									tabIndex={0}
 									autoComplete="name"
 									name="name"
 									placeholder="Full name"
@@ -43,7 +41,7 @@ export default function Register() {
 									id="email"
 									type="email"
 									required
-									tabIndex="0"
+									tabIndex={0}
 									autoComplete="email"
 									name="email"
 									placeholder="email@example.com"
@@ -51,36 +49,10 @@ export default function Register() {
 								<InputError message={errors.email} />
 							</div>
 
-							<div className="grid gap-2">
-								<Label htmlFor="password">Password</Label>
-								<PasswordInput
-									id="password"
-									required
-									tabIndex="0"
-									autoComplete="new-password"
-									name="password"
-									placeholder="Password"
-								/>
-								<InputError message={errors.password} />
-							</div>
-
-							<div className="grid gap-2">
-								<Label htmlFor="password_confirmation">Confirm password</Label>
-								<PasswordInput
-									id="password_confirmation"
-									required
-									tabIndex="0"
-									autoComplete="new-password"
-									name="password_confirmation"
-									placeholder="Confirm password"
-								/>
-								<InputError message={errors.password_confirmation} />
-							</div>
-
 							<Button
 								type="submit"
 								className="mt-2 w-full"
-								tabIndex="0"
+								tabIndex={0}
 								data-test="register-user-button"
 							>
 								{processing && <Spinner />}
@@ -90,7 +62,7 @@ export default function Register() {
 
 						<div className="text-center text-sm text-muted-foreground">
 							Already have an account?{" "}
-							<TextLink href={login()} tabIndex="0">
+							<TextLink href={login()} tabIndex={0}>
 								Log in
 							</TextLink>
 						</div>
@@ -103,5 +75,5 @@ export default function Register() {
 
 Register.layout = {
 	title: "Create an account",
-	description: "Enter your details below to create your account",
+	description: "Enter your name and email to create your account",
 };

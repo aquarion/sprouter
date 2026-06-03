@@ -17,6 +17,7 @@ use Webauthn\CredentialRecord;
 use Webauthn\Denormalizer\WebauthnSerializerFactory;
 use Webauthn\PublicKeyCredential;
 use Webauthn\PublicKeyCredentialCreationOptions;
+use Webauthn\PublicKeyCredentialDescriptor;
 use Webauthn\PublicKeyCredentialParameters;
 use Webauthn\PublicKeyCredentialRequestOptions;
 use Webauthn\PublicKeyCredentialRpEntity;
@@ -65,6 +66,25 @@ class WebAuthnService
             challenge: random_bytes(32),
             rpId: $this->rpId(),
             allowCredentials: [],
+            userVerification: PublicKeyCredentialRequestOptions::USER_VERIFICATION_REQUIREMENT_PREFERRED,
+        );
+    }
+
+    public function generateAuthenticationOptionsForUser(User $user): PublicKeyCredentialRequestOptions
+    {
+        $allowedCredentials = $user->passkeys()
+            ->get(['credential_id', 'transports'])
+            ->map(fn ($passkey) => new PublicKeyCredentialDescriptor(
+                type: 'public-key',
+                id: base64_decode($passkey->credential_id),
+                transports: $passkey->transports ?? [],
+            ))
+            ->all();
+
+        return new PublicKeyCredentialRequestOptions(
+            challenge: random_bytes(32),
+            rpId: $this->rpId(),
+            allowCredentials: $allowedCredentials,
             userVerification: PublicKeyCredentialRequestOptions::USER_VERIFICATION_REQUIREMENT_PREFERRED,
         );
     }

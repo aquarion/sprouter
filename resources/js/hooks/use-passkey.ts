@@ -1,10 +1,12 @@
 import { router } from "@inertiajs/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { dashboard } from "@/routes";
+import { confirm as confirmRoute } from "@/routes/passkey";
 import {
 	authenticate as authenticateRoute,
 	options as authOptions,
 } from "@/routes/passkey/auth";
+import { options as confirmOptions } from "@/routes/passkey/confirm";
 import {
 	options as registerOptions,
 	store as registerStore,
@@ -107,6 +109,7 @@ export type UsePasskeyReturn = {
 	error: string | null;
 	register: (name: string) => Promise<boolean>;
 	authenticate: () => Promise<void>;
+	confirmIdentity: () => Promise<boolean>;
 	startConditional: () => void;
 	abortConditional: () => void;
 };
@@ -219,12 +222,14 @@ export function usePasskey(): UsePasskeyReturn {
 		[isSupported, fetchOptions, prepareCreationOptions],
 	);
 
-	const runAuthentication = useCallback(
+	const performAssertion = useCallback(
 		async (
+			optionsUrl: string,
+			assertUrl: string,
 			mediation: CredentialMediationRequirement,
 			signal?: AbortSignal,
-		): Promise<void> => {
-			const optionsRes = await fetch(authOptions.url(), {
+		): Promise<Response | null> => {
+			const optionsRes = await fetch(optionsUrl, {
 				headers: { Accept: "application/json" },
 			});
 
@@ -234,8 +239,8 @@ export function usePasskey(): UsePasskeyReturn {
 
 			const token = optionsRes.headers.get("X-Passkey-Token");
 			const raw = (await optionsRes.json()) as WebAuthnRequestOptions;
-
 			const options = prepareRequestOptions(raw);
+
 			const credential = (await navigator.credentials.get({
 				publicKey: options,
 				mediation,
@@ -243,24 +248,43 @@ export function usePasskey(): UsePasskeyReturn {
 			})) as PublicKeyCredentialWithResponse | null;
 
 			if (!credential) {
-				return;
+				return null;
 			}
 
-			const authHeaders: Record<string, string> = {
+			const headers: Record<string, string> = {
 				"Content-Type": "application/json",
 				Accept: "application/json",
 				"X-XSRF-TOKEN": getXsrfToken(),
 			};
 
 			if (token) {
-				authHeaders["X-Passkey-Token"] = token;
+				headers["X-Passkey-Token"] = token;
 			}
 
-			const res = await fetch(authenticateRoute.url(), {
+			return fetch(assertUrl, {
 				method: "POST",
-				headers: authHeaders,
+				headers,
 				body: JSON.stringify(serializeCredential(credential)),
 			});
+		},
+		[prepareRequestOptions],
+	);
+
+	const runAuthentication = useCallback(
+		async (
+			mediation: CredentialMediationRequirement,
+			signal?: AbortSignal,
+		): Promise<void> => {
+			const res = await performAssertion(
+				authOptions.url(),
+				authenticateRoute.url(),
+				mediation,
+				signal,
+			);
+
+			if (!res) {
+				return;
+			}
 
 			if (!res.ok) {
 				const body = (await res.json()) as { message?: string };
@@ -271,7 +295,7 @@ export function usePasskey(): UsePasskeyReturn {
 			const body = (await res.json()) as { redirect?: string };
 			router.visit(body.redirect ?? dashboard.url());
 		},
-		[prepareRequestOptions],
+		[performAssertion],
 	);
 
 	const authenticate = useCallback(async (): Promise<void> => {
@@ -330,6 +354,51 @@ export function usePasskey(): UsePasskeyReturn {
 		abortRef.current?.abort();
 	}, []);
 
+	const confirmIdentity = useCallback(async (): Promise<boolean> => {
+		if (!isSupported) {
+			setError(
+				"Passkeys are not supported in this browser. Please use a supported browser to confirm your identity.",
+			);
+
+			return false;
+		}
+
+		setLoading(true);
+		setError(null);
+
+		try {
+			const res = await performAssertion(
+				confirmOptions.url(),
+				confirmRoute.url(),
+				"optional",
+			);
+
+			if (!res) {
+				return false;
+			}
+
+			if (!res.ok) {
+				const body = (await res.json()) as { message?: string };
+
+				throw new Error(body.message ?? "Confirmation failed");
+			}
+
+			return true;
+		} catch (e: unknown) {
+			if (
+				e instanceof Error &&
+				e.name !== "NotAllowedError" &&
+				e.name !== "AbortError"
+			) {
+				setError(e.message);
+			}
+
+			return false;
+		} finally {
+			setLoading(false);
+		}
+	}, [isSupported, performAssertion]);
+
 	useEffect(() => {
 		return () => abortRef.current?.abort();
 	}, []);
@@ -340,6 +409,7 @@ export function usePasskey(): UsePasskeyReturn {
 		error,
 		register,
 		authenticate,
+		confirmIdentity,
 		startConditional,
 		abortConditional,
 	};

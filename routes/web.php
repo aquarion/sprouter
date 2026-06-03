@@ -48,7 +48,7 @@ Route::middleware(['auth', 'passkey.exists'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
     Route::get('feed', [FeedController::class, 'index'])->name('feed');
 
-    Route::get('auth/passkey/confirm/options', [PasskeyAuthController::class, 'options'])
+    Route::get('auth/passkey/confirm/options', [PasskeyAuthController::class, 'confirmOptions'])
         ->name('passkey.confirm.options');
     Route::post('auth/passkey/confirm', [PasskeyAuthController::class, 'confirm'])
         ->name('passkey.confirm');

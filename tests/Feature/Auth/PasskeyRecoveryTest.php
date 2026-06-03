@@ -36,17 +36,17 @@ test('recovery invalidates previous unused tokens', function () {
     Mail::fake();
 
     $user = User::factory()->create();
-    PasskeyRecoveryToken::create(['user_id' => $user->id, 'token' => hash('sha256', 'old-token')]);
+    $old = PasskeyRecoveryToken::createForUser($user, 'old-token');
 
     $this->post(route('passkey.recover.store'), ['email' => $user->email]);
 
-    expect(PasskeyRecoveryToken::where('token', hash('sha256', 'old-token'))->exists())->toBeFalse();
+    expect(PasskeyRecoveryToken::where('id', $old->id)->exists())->toBeFalse();
     expect(PasskeyRecoveryToken::where('user_id', $user->id)->count())->toBe(1);
 });
 
 test('valid recovery token logs in user and redirects to passkey setup', function () {
     $user = User::factory()->create();
-    $record = PasskeyRecoveryToken::create(['user_id' => $user->id, 'token' => hash('sha256', 'valid-token')]);
+    $record = PasskeyRecoveryToken::createForUser($user, 'valid-token');
 
     $this->get(route('passkey.recover.setup', 'valid-token'))
         ->assertRedirect(route('passkey.setup'));
@@ -57,7 +57,7 @@ test('valid recovery token logs in user and redirects to passkey setup', functio
 
 test('expired recovery token shows invalid page', function () {
     $user = User::factory()->create();
-    $record = PasskeyRecoveryToken::create(['user_id' => $user->id, 'token' => hash('sha256', 'expired-token')]);
+    $record = PasskeyRecoveryToken::createForUser($user, 'expired-token');
     $record->created_at = now()->subHours(2);
     $record->save();
 
@@ -71,11 +71,8 @@ test('expired recovery token shows invalid page', function () {
 
 test('used recovery token shows invalid page', function () {
     $user = User::factory()->create();
-    PasskeyRecoveryToken::create([
-        'user_id' => $user->id,
-        'token' => hash('sha256', 'used-token'),
-        'used_at' => now(),
-    ]);
+    $record = PasskeyRecoveryToken::createForUser($user, 'used-token');
+    $record->consume();
 
     $this->withoutVite()
         ->get(route('passkey.recover.setup', 'used-token'))

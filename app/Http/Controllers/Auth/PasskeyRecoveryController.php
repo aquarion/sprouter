@@ -36,10 +36,7 @@ class PasskeyRecoveryController extends Controller
 
             $token = Str::random(40);
 
-            PasskeyRecoveryToken::create([
-                'user_id' => $user->id,
-                'token' => hash('sha256', $token),
-            ]);
+            PasskeyRecoveryToken::createForUser($user, $token);
 
             $url = route('passkey.recover.setup', ['token' => $token]);
 
@@ -85,7 +82,7 @@ class PasskeyRecoveryController extends Controller
             return Inertia::render('auth/recover-invalid');
         }
 
-        $record->update(['used_at' => now()]);
+        $record->consume();
 
         Auth::login($user);
 

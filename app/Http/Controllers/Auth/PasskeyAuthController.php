@@ -26,9 +26,48 @@ class PasskeyAuthController extends Controller
 
     public function options(): Response
     {
-        $options = $this->webAuthn->generateAuthenticationOptions();
+        return $this->buildOptionsResponse(
+            $this->webAuthn->generateAuthenticationOptions(),
+            'passkey_auth',
+        );
+    }
+
+    public function authenticate(Request $request): JsonResponse
+    {
+        $result = $this->resolveVerifiedPasskey($request, cachePrefix: 'passkey_auth');
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
+
+        Auth::login($result['passkey']->user);
+
+        return response()->json(['redirect' => route('dashboard')]);
+    }
+
+    public function confirmOptions(Request $request): Response
+    {
+        return $this->buildOptionsResponse(
+            $this->webAuthn->generateAuthenticationOptionsForUser($request->user()),
+            'passkey_confirm',
+        );
+    }
+
+    public function confirm(Request $request): JsonResponse
+    {
+        $result = $this->resolveVerifiedPasskey($request, $request->user()->id, 'passkey_confirm');
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
+
+        $request->session()->put('passkey_confirmed_at', time());
+
+        return response()->json(['confirmed' => true]);
+    }
+
+    private function buildOptionsResponse(mixed $options, string $cachePrefix): Response
+    {
         $token = Str::random(40);
-        Cache::put("passkey_auth:{$token}", serialize($options), 300);
+        Cache::put("{$cachePrefix}:{$token}", serialize($options), 300);
 
         $serializer = (new WebauthnSerializerFactory(
             new AttestationStatementSupportManager([new NoneAttestationStatementSupport])
@@ -40,35 +79,14 @@ class PasskeyAuthController extends Controller
         ]);
     }
 
-    public function authenticate(Request $request): JsonResponse
-    {
-        $result = $this->resolveVerifiedPasskey($request);
-        if ($result instanceof JsonResponse) {
-            return $result;
-        }
-
-        Auth::login($result['passkey']->user);
-
-        return response()->json(['redirect' => route('dashboard')]);
-    }
-
-    public function confirm(Request $request): JsonResponse
-    {
-        $result = $this->resolveVerifiedPasskey($request, $request->user()->id);
-        if ($result instanceof JsonResponse) {
-            return $result;
-        }
-
-        $request->session()->put('passkey_confirmed_at', time());
-
-        return response()->json(['confirmed' => true]);
-    }
-
     /** @return array{passkey: Passkey}|JsonResponse */
-    private function resolveVerifiedPasskey(Request $request, ?int $requiredUserId = null): array|JsonResponse
-    {
+    private function resolveVerifiedPasskey(
+        Request $request,
+        ?int $requiredUserId = null,
+        string $cachePrefix = 'passkey_auth',
+    ): array|JsonResponse {
         $token = $request->header('X-Passkey-Token');
-        $serialized = $token ? Cache::pull("passkey_auth:{$token}") : null;
+        $serialized = $token ? Cache::pull("{$cachePrefix}:{$token}") : null;
         if (! $serialized) {
             return response()->json(['message' => 'No active challenge. Please try again.'], 422);
         }

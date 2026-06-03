@@ -74,7 +74,7 @@ test('confirm endpoint rejects a passkey belonging to a different user', functio
         userVerification: PublicKeyCredentialRequestOptions::USER_VERIFICATION_REQUIREMENT_PREFERRED,
     );
     $token = 'test-confirm-cross-user';
-    Cache::put("passkey_auth:{$token}", serialize($options), 300);
+    Cache::put("passkey_confirm:{$token}", serialize($options), 300);
 
     $rawId = rtrim(strtr(base64_encode(base64_decode($otherPasskey->credential_id)), '+/', '-_'), '=');
 

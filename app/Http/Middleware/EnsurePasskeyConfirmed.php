@@ -13,7 +13,8 @@ class EnsurePasskeyConfirmed
     public function handle(Request $request, Closure $next): Response
     {
         if (time() - (int) $request->session()->get('passkey_confirmed_at', 0) > self::TIMEOUT) {
-            return back()->withErrors(['passkey' => 'Please confirm your identity to continue.']);
+            return redirect()->back(302, [], route('profile.edit'))
+                ->withErrors(['passkey' => 'Please confirm your identity to continue.']);
         }
 
         return $next($request);

@@ -6,11 +6,11 @@ use Illuminate\Support\Facades\Http;
 
 class BlueskyAuthService
 {
-    private const BASE = 'https://bsky.social/xrpc';
+    private const DEFAULT_PDS = 'https://bsky.social';
 
-    public function createSession(string $identifier, string $appPassword): array
+    public function createSession(string $identifier, string $appPassword, string $pdsUrl = self::DEFAULT_PDS): array
     {
-        $response = Http::post(self::BASE.'/com.atproto.server.createSession', [
+        $response = Http::post(rtrim($pdsUrl, '/').'/xrpc/com.atproto.server.createSession', [
             'identifier' => $identifier,
             'password' => $appPassword,
         ])->throw()->json();
@@ -22,11 +22,10 @@ class BlueskyAuthService
         ];
     }
 
-    public function refreshSession(string $refreshToken): array
+    public function refreshSession(string $refreshToken, string $pdsUrl = self::DEFAULT_PDS): array
     {
-        // ATProto refreshSession expects an authenticated POST with no request body.
         $response = Http::withToken($refreshToken)
-            ->send('POST', self::BASE.'/com.atproto.server.refreshSession')
+            ->send('POST', rtrim($pdsUrl, '/').'/xrpc/com.atproto.server.refreshSession')
             ->throw()
             ->json();
 

@@ -1,3 +1,5 @@
+import type { Post } from "@/types/post";
+
 function hashString(str: string): number {
 	let hash = 5381;
 
@@ -29,4 +31,11 @@ export function postColors(authorHandle: string): PostColors {
 		text: `hsl(${hue}, ${saturation}%, 90%)`,
 		highlight: `hsl(${(hue + 30) % 360}, ${saturation + 10}%, 70%)`,
 	};
+}
+
+export function postDisplayColors(post: Post): PostColors | null {
+	const hasMedia = post.media.length > 0;
+	const hasBanner = !hasMedia && !!post.author_banner;
+
+	return hasMedia || hasBanner ? null : postColors(post.author_handle);
 }

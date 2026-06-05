@@ -14,6 +14,7 @@
 .DS_Store
 .env
 .env.backup
+.env.dusk.local
 .env.production
 .phpactor.json
 .phpunit.result.cache
@@ -31,3 +32,7 @@ yarn-error.log
 .superpowers
 *:Zone.Identifier
 htdocs
+
+**/caddy
+frankenphp
+frankenphp-worker.php

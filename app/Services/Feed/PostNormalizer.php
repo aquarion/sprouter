@@ -4,15 +4,16 @@ namespace App\Services\Feed;
 
 class PostNormalizer
 {
-    public function fromMastodon(array $status, string $host, ?array $parentStatus = null): array
+    public function fromMastodon(array $status, string $host, ?array $parentStatus = null, string $sourceHandle = '', ?array $quoteStatus = null): array
     {
         $source = $status['reblog'] ?? $status;
         $sourceHost = isset($status['reblog'])
             ? (parse_url($source['url'], PHP_URL_HOST) ?? $host)
             : $host;
 
-        $booster = isset($status['reblog'])
-            ? ($status['account']['display_name'] ?: $status['account']['acct'])
+        $boosterAccount = isset($status['reblog']) ? $status['account'] : null;
+        $booster = $boosterAccount
+            ? ($boosterAccount['display_name'] ?: $boosterAccount['acct'])
             : null;
 
         $emojis = $this->buildEmojiMap(array_merge(
@@ -21,58 +22,77 @@ class PostNormalizer
             $status['account']['emojis'] ?? [],
         ));
 
+        $card = $source['card'] ?? null;
+        $cardUrl = $card ? ($this->safeUrl($card['url'] ?? '') ?: null) : null;
+        $linkUrl = $cardUrl
+            ?? $this->extractFirstLinkFromHtml($source['content'])
+            ?? $this->extractFirstLink(html_entity_decode(strip_tags($source['content']), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+
         return [
             'id' => "mastodon_{$status['id']}",
             'source' => 'mastodon',
+            'source_handle' => $sourceHandle,
             'author_name' => $source['account']['display_name'] ?: $source['account']['acct'],
-            'author_handle' => "@{$source['account']['acct']}@{$sourceHost}",
+            'author_handle' => str_contains($source['account']['acct'], '@')
+                ? "@{$source['account']['acct']}"
+                : "@{$source['account']['acct']}@{$sourceHost}",
             'author_avatar' => $this->safeUrl($source['account']['avatar']),
             'author_banner' => $this->safeUrl($source['account']['header'] ?? '') ?: null,
-            'body' => $this->extractBody($source['content']),
+            'body' => $this->truncateBody($this->extractBody($source['content']), config('feed.body_limit', 1024)),
             'media' => $this->normaliseMastodonMedia($source['media_attachments'] ?? []),
             'created_at' => $source['created_at'],
             'original_url' => $this->safeUrl($source['url']),
-            'link_url' => $this->extractFirstLinkFromHtml($source['content'])
-                ?? $this->extractFirstLink(html_entity_decode(strip_tags($source['content']), ENT_QUOTES | ENT_HTML5, 'UTF-8')),
-            'link_title' => null,
-            'link_favicon' => null,
+            'link_url' => $linkUrl,
+            'link_title' => $card ? ($card['title'] ?? null) : null,
+            'link_favicon' => $this->faviconUrl($linkUrl),
             'reply_to' => $this->mastodonReplyTo($parentStatus, $host),
-            'quoted_post' => null,
+            'quoted_post' => $this->mastodonQuotedPost($source, $host, $quoteStatus),
             'boosted_by' => $booster,
+            'boosted_by_avatar' => $boosterAccount ? $this->safeUrl($boosterAccount['avatar'] ?? '') : null,
+            'boosted_by_handle' => $boosterAccount ? '@'.$boosterAccount['acct'] : null,
+            'boosted_by_created_at' => $boosterAccount ? ($status['created_at'] ?? null) : null,
             'emojis' => $emojis,
         ];
     }
 
-    public function fromBluesky(array $feedPost): array
+    public function fromBluesky(array $feedPost, string $sourceHandle = ''): array
     {
         $post = $feedPost['post'];
         $record = $post['record'];
         $author = $post['author'];
 
         $reason = $feedPost['reason'] ?? null;
-        $booster = ($reason && ($reason['$type'] ?? '') === 'app.bsky.feed.defs#reasonRepost')
-            ? ($reason['by']['displayName'] ?? $reason['by']['handle'] ?? null)
+        $repostBy = ($reason && ($reason['$type'] ?? '') === 'app.bsky.feed.defs#reasonRepost')
+            ? ($reason['by'] ?? null)
+            : null;
+        $booster = $repostBy
+            ? ($repostBy['displayName'] ?? $repostBy['handle'] ?? null)
             : null;
 
         $externalData = $this->blueskyExternalData($post['embed'] ?? null);
+        $linkUrl = $externalData['url'] ?? $this->extractFirstLink($record['text']);
 
         return [
             'id' => "bluesky_{$post['uri']}",
             'source' => 'bluesky',
+            'source_handle' => $sourceHandle,
             'author_name' => $author['displayName'] ?: $author['handle'],
             'author_handle' => '@'.$author['handle'],
             'author_avatar' => $this->safeUrl($author['avatar'] ?? ''),
             'author_banner' => $this->safeUrl($author['banner'] ?? '') ?: null,
-            'body' => $this->stripUrls($record['text']),
+            'body' => $this->truncateBody($this->stripUrls($record['text']), config('feed.body_limit', 1024)),
             'media' => $this->normaliseBlueskyMedia($post['embed'] ?? null),
             'created_at' => $record['createdAt'],
             'original_url' => $this->blueskyPostUrl($author['handle'], $post['uri']),
-            'link_url' => $externalData['url'] ?? $this->extractFirstLink($record['text']),
+            'link_url' => $linkUrl,
             'link_title' => $externalData['title'] ?? null,
-            'link_favicon' => $externalData['favicon'] ?? null,
+            'link_favicon' => $this->faviconUrl($linkUrl),
             'reply_to' => $this->blueskyReplyTo($feedPost['reply']['parent'] ?? null),
             'quoted_post' => $this->blueskyQuotedPost($post['embed'] ?? null),
             'boosted_by' => $booster,
+            'boosted_by_avatar' => $repostBy ? $this->safeUrl($repostBy['avatar'] ?? '') : null,
+            'boosted_by_handle' => $repostBy ? '@'.($repostBy['handle'] ?? '') : null,
+            'boosted_by_created_at' => $repostBy ? ($reason['indexedAt'] ?? null) : null,
             'emojis' => [],
         ];
     }
@@ -87,12 +107,41 @@ class PostNormalizer
 
         return [
             'author_name' => $parent['account']['display_name'] ?: $parent['account']['acct'],
-            'author_handle' => "@{$parent['account']['acct']}@{$parentHost}",
+            'author_handle' => str_contains($parent['account']['acct'], '@')
+                ? "@{$parent['account']['acct']}"
+                : "@{$parent['account']['acct']}@{$parentHost}",
             'author_avatar' => $this->safeUrl($parent['account']['avatar'] ?? ''),
             'original_url' => $this->safeUrl($parent['url'] ?? ''),
             'body' => $this->truncateBody(
                 $this->extractBody($parent['content'])
             ),
+            'created_at' => $parent['created_at'] ?? null,
+        ];
+    }
+
+    private function mastodonQuotedPost(array $source, string $host, ?array $quoteStatus): ?array
+    {
+        $inlineQuote = $source['quote'] ?? null;
+        // Mastodon 4.3+ wraps the quote as { state, quoted_status }.
+        // array_key_exists (not isset) so that null quoted_status (pending/rejected) falls through correctly.
+        $raw = (is_array($inlineQuote) && array_key_exists('quoted_status', $inlineQuote))
+            ? ($inlineQuote['quoted_status'] ?? $quoteStatus)
+            : ($inlineQuote ?? $quoteStatus);
+
+        if ($raw === null) {
+            return null;
+        }
+
+        $acct = $raw['account']['acct'] ?? '';
+        $quoteHost = parse_url($raw['url'] ?? '', PHP_URL_HOST) ?? $host;
+
+        return [
+            'author_name' => ($raw['account']['display_name'] ?? '') ?: $acct,
+            'author_handle' => str_contains($acct, '@') ? "@{$acct}" : "@{$acct}@{$quoteHost}",
+            'author_avatar' => $this->safeUrl($raw['account']['avatar'] ?? ''),
+            'original_url' => $this->safeUrl($raw['url'] ?? ''),
+            'body' => $this->truncateBody($this->extractBody($raw['content'] ?? '')),
+            'created_at' => $raw['created_at'] ?? null,
         ];
     }
 
@@ -110,6 +159,7 @@ class PostNormalizer
             'author_avatar' => $this->safeUrl($parent['author']['avatar'] ?? ''),
             'original_url' => $this->blueskyPostUrl($handle, $parent['uri'] ?? ''),
             'body' => $this->truncateBody($parent['record']['text']),
+            'created_at' => $parent['record']['createdAt'] ?? null,
         ];
     }
 
@@ -146,6 +196,7 @@ class PostNormalizer
             'author_avatar' => $this->safeUrl($record['author']['avatar'] ?? ''),
             'original_url' => $this->blueskyPostUrl($handle, $record['uri'] ?? ''),
             'body' => $this->truncateBody($text),
+            'created_at' => $record['value']['createdAt'] ?? null,
         ];
     }
 
@@ -158,8 +209,8 @@ class PostNormalizer
 
             return [
                 'type' => $a['type'],
-                'url' => $a['url'],
-                'preview_url' => $a['preview_url'],
+                'url' => $this->safeUrl($a['url'] ?? ''),
+                'preview_url' => $this->safeUrl($a['preview_url'] ?? '') ?: null,
                 'alt_text' => $a['description'] ?: null,
             ];
         }, $attachments)));
@@ -171,13 +222,27 @@ class PostNormalizer
             return [];
         }
 
-        if ($embed['$type'] === 'app.bsky.embed.images#view') {
+        if (($embed['$type'] ?? '') === 'app.bsky.embed.images#view') {
             return array_map(fn ($img) => [
                 'type' => 'image',
-                'url' => $img['fullsize'],
-                'preview_url' => $img['thumb'],
+                'url' => $this->safeUrl($img['fullsize'] ?? ''),
+                'preview_url' => $this->safeUrl($img['thumb'] ?? ''),
                 'alt_text' => $img['alt'] ?: null,
             ], $embed['images'] ?? []);
+        }
+
+        if (($embed['$type'] ?? '') === 'app.bsky.embed.video#view') {
+            $playlist = $this->safeUrl($embed['playlist'] ?? '');
+            if ($playlist === '') {
+                return [];
+            }
+
+            return [[
+                'type' => 'video',
+                'url' => $playlist,
+                'preview_url' => $this->safeUrl($embed['thumbnail'] ?? '') ?: null,
+                'alt_text' => $embed['alt'] ?? null,
+            ]];
         }
 
         return [];
@@ -237,7 +302,6 @@ class PostNormalizer
             return [
                 'url' => $this->safeUrl($ext['uri'] ?? '') ?: null,
                 'title' => $ext['title'] ?? null,
-                'favicon' => $this->safeUrl($ext['thumb'] ?? '') ?: null,
             ];
         }
         if ($type === 'app.bsky.embed.recordWithMedia#view') {
@@ -248,7 +312,6 @@ class PostNormalizer
                 return [
                     'url' => $this->safeUrl($ext['uri'] ?? '') ?: null,
                     'title' => $ext['title'] ?? null,
-                    'favicon' => $this->safeUrl($ext['thumb'] ?? '') ?: null,
                 ];
             }
         }
@@ -265,9 +328,10 @@ class PostNormalizer
         );
     }
 
-    private function truncateBody(string $text, int $limit = 120): string
+    private function truncateBody(string $text, ?int $limit = null): string
     {
         $text = $this->truncateUrls($text);
+        $limit ??= config('feed.context_body_limit', 300);
 
         return mb_strlen($text) > $limit ? mb_substr($text, 0, $limit).'…' : $text;
     }
@@ -293,6 +357,17 @@ class PostNormalizer
         }
 
         return $map;
+    }
+
+    private function faviconUrl(?string $linkUrl): ?string
+    {
+        if (! $linkUrl) {
+            return null;
+        }
+
+        $domain = parse_url($linkUrl, PHP_URL_HOST);
+
+        return $domain ? "https://favicone.com/{$domain}" : null;
     }
 
     private function safeUrl(?string $url): string

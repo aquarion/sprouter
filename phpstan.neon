@@ -5,5 +5,3 @@ parameters:
     paths:
         - app/
     level: 4
-    excludePaths:
-        - app/Concerns/PasswordValidationRules.php

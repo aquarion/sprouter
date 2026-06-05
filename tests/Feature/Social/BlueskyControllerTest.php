@@ -3,7 +3,10 @@
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\Bluesky\BlueskyAuthService;
+use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 
 uses(RefreshDatabase::class);
 
@@ -13,12 +16,12 @@ it('redirects guests away from bluesky connect', function () {
     $response->assertRedirect('/login');
 });
 
-it('saves the bluesky account and redirects on store', function () {
-    $user = User::factory()->create();
+it('saves a new bluesky account and redirects on store', function () {
+    $user = User::factory()->withPasskey()->create();
     $service = Mockery::mock(BlueskyAuthService::class);
     $service->shouldReceive('createSession')
         ->once()
-        ->with('test.bsky.social', 'xxxx-xxxx')
+        ->with('test.bsky.social', 'xxxx-xxxx', 'https://bsky.social')
         ->andReturn([
             'access_token' => 'access-jwt',
             'refresh_token' => 'refresh-jwt',
@@ -38,60 +41,255 @@ it('saves the bluesky account and redirects on store', function () {
         'user_id' => $user->id,
         'provider' => 'bluesky',
         'handle' => '@test.bsky.social',
+        'instance_url' => 'https://bsky.social',
     ]);
 });
 
+it('saves a bluesky account with a custom PDS url', function () {
+    $user = User::factory()->withPasskey()->create();
+    $service = Mockery::mock(BlueskyAuthService::class);
+    $service->shouldReceive('createSession')
+        ->once()
+        ->with('alice.example.com', 'xxxx-xxxx', 'https://example.com')
+        ->andReturn([
+            'access_token' => 'access-jwt',
+            'refresh_token' => 'refresh-jwt',
+            'handle' => '@alice.example.com',
+        ]);
+    $this->app->instance(BlueskyAuthService::class, $service);
+
+    $this->actingAs($user)->post('/auth/bluesky', [
+        'handle' => 'alice.example.com',
+        'app_password' => 'xxxx-xxxx',
+        'pds_url' => 'https://example.com',
+    ]);
+
+    $this->assertDatabaseHas('social_accounts', [
+        'provider' => 'bluesky',
+        'instance_url' => 'https://example.com',
+    ]);
+});
+
+it('allows connecting a second bluesky account with a different handle', function () {
+    $user = User::factory()->withPasskey()->create();
+    SocialAccount::factory()->create([
+        'user_id' => $user->id,
+        'provider' => 'bluesky',
+        'instance_url' => 'https://bsky.social',
+        'handle' => '@first.bsky.social',
+    ]);
+
+    $service = Mockery::mock(BlueskyAuthService::class);
+    $service->shouldReceive('createSession')->andReturn([
+        'access_token' => 'access-jwt',
+        'refresh_token' => 'refresh-jwt',
+        'handle' => '@second.bsky.social',
+    ]);
+    $this->app->instance(BlueskyAuthService::class, $service);
+
+    $response = $this->actingAs($user)->post('/auth/bluesky', [
+        'handle' => 'second.bsky.social',
+        'app_password' => 'xxxx-xxxx',
+    ]);
+
+    $response->assertSessionHas('status', 'bluesky-connected');
+    $this->assertDatabaseCount('social_accounts', 2);
+});
+
+it('redirects with bluesky-already-connected for a duplicate handle', function () {
+    $user = User::factory()->withPasskey()->create();
+    SocialAccount::factory()->create([
+        'user_id' => $user->id,
+        'provider' => 'bluesky',
+        'instance_url' => 'https://bsky.social',
+        'handle' => '@test.bsky.social',
+    ]);
+
+    $service = Mockery::mock(BlueskyAuthService::class);
+    $service->shouldReceive('createSession')->andReturn([
+        'access_token' => 'access-jwt',
+        'refresh_token' => 'refresh-jwt',
+        'handle' => '@test.bsky.social',
+    ]);
+    $this->app->instance(BlueskyAuthService::class, $service);
+
+    $response = $this->actingAs($user)->post('/auth/bluesky', [
+        'handle' => 'test.bsky.social',
+        'app_password' => 'xxxx-xxxx',
+    ]);
+
+    $response->assertRedirect(route('connections.edit'));
+    $response->assertSessionHas('status', 'bluesky-already-connected');
+    $this->assertDatabaseCount('social_accounts', 1);
+});
+
+it('rejects a non-https pds_url', function () {
+    $user = User::factory()->withPasskey()->create();
+
+    $response = $this->actingAs($user)->post('/auth/bluesky', [
+        'handle' => 'alice.bsky.social',
+        'app_password' => 'xxxx-xxxx',
+        'pds_url' => 'http://evil.example.com',
+    ]);
+
+    $response->assertSessionHasErrors('pds_url');
+});
+
 it('validates handle and app_password on store', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->withPasskey()->create();
 
     $response = $this->actingAs($user)->post('/auth/bluesky', []);
 
     $response->assertSessionHasErrors(['handle', 'app_password']);
 });
 
-it('updates an existing bluesky account on re-connect', function () {
-    $user = User::factory()->create();
-    SocialAccount::factory()->create([
+it('returns a validation error on invalid credentials', function () {
+    $user = User::factory()->withPasskey()->create();
+    $service = Mockery::mock(BlueskyAuthService::class);
+    $service->shouldReceive('createSession')
+        ->once()
+        ->andThrow(new RequestException(
+            new Illuminate\Http\Client\Response(
+                new Response(401, [], json_encode([
+                    'error' => 'AuthenticationRequired',
+                    'message' => 'Invalid identifier or password',
+                ]))
+            )
+        ));
+    $this->app->instance(BlueskyAuthService::class, $service);
+
+    $response = $this->actingAs($user)->post('/auth/bluesky', [
+        'handle' => 'test.bsky.social',
+        'app_password' => 'wrong-password', // pragma: allowlist secret
+    ]);
+
+    $response->assertSessionHasErrors('app_password');
+});
+
+it('returns a validation error when the bluesky connection times out', function () {
+    $user = User::factory()->withPasskey()->create();
+    $service = Mockery::mock(BlueskyAuthService::class);
+    $service->shouldReceive('createSession')
+        ->once()
+        ->andThrow(new ConnectionException('Connection timed out'));
+    $this->app->instance(BlueskyAuthService::class, $service);
+
+    $response = $this->actingAs($user)->post('/auth/bluesky', [
+        'handle' => 'test.bsky.social',
+        'app_password' => 'xxxx-xxxx',
+    ]);
+
+    $response->assertSessionHasErrors('app_password');
+});
+
+it('returns a validation error on a failed bluesky connection', function () {
+    $user = User::factory()->withPasskey()->create();
+    $service = Mockery::mock(BlueskyAuthService::class);
+    $service->shouldReceive('createSession')
+        ->once()
+        ->andThrow(new RequestException(
+            new Illuminate\Http\Client\Response(
+                new Response(500, [], '{}')
+            )
+        ));
+    $this->app->instance(BlueskyAuthService::class, $service);
+
+    $response = $this->actingAs($user)->post('/auth/bluesky', [
+        'handle' => 'test.bsky.social',
+        'app_password' => 'xxxx-xxxx',
+    ]);
+
+    $response->assertSessionHasErrors('app_password');
+});
+
+it('updates tokens and clears auth_failed_at on successful reauth', function () {
+    $user = User::factory()->withPasskey()->create();
+    $account = SocialAccount::factory()->create([
         'user_id' => $user->id,
         'provider' => 'bluesky',
-        'handle' => '@old.bsky.social',
+        'instance_url' => 'https://bsky.social',
+        'handle' => '@alice.bsky.social',
+        'access_token' => 'old-access',
+        'token_secret' => 'old-refresh',
+        'auth_failed_at' => now(),
     ]);
 
     $service = Mockery::mock(BlueskyAuthService::class);
-    $service->shouldReceive('createSession')->andReturn([
-        'access_token' => 'new-access',
-        'refresh_token' => 'new-refresh',
-        'handle' => '@new.bsky.social',
-    ]);
+    $service->shouldReceive('createSession')
+        ->once()
+        ->with('@alice.bsky.social', 'new-xxxx-xxxx', 'https://bsky.social')
+        ->andReturn([
+            'access_token' => 'new-access',
+            'refresh_token' => 'new-refresh',
+            'handle' => '@alice.bsky.social',
+        ]);
     $this->app->instance(BlueskyAuthService::class, $service);
 
-    $this->actingAs($user)->post('/auth/bluesky', [
-        'handle' => 'new.bsky.social',
-        'app_password' => 'xxxx-yyyy',
-    ]);
-
-    $this->assertDatabaseCount('social_accounts', 1);
-    $this->assertDatabaseHas('social_accounts', ['handle' => '@new.bsky.social']);
-});
-
-it('disconnects bluesky and redirects', function () {
-    $user = User::factory()->create();
-    SocialAccount::factory()->create(['user_id' => $user->id, 'provider' => 'bluesky']);
-
-    $response = $this->actingAs($user)->delete('/auth/bluesky');
+    $response = $this->actingAs($user)
+        ->patch("/auth/connections/{$account->id}/bluesky", ['app_password' => 'new-xxxx-xxxx']);
 
     $response->assertRedirect(route('connections.edit'));
-    $response->assertSessionHas('status', 'bluesky-disconnected');
-    $this->assertDatabaseMissing('social_accounts', ['user_id' => $user->id, 'provider' => 'bluesky']);
+    $response->assertSessionHas('status', 'bluesky-reconnected');
+
+    $account->refresh();
+    expect($account->access_token)->toBe('new-access')
+        ->and($account->token_secret)->toBe('new-refresh')
+        ->and($account->auth_failed_at)->toBeNull();
 });
 
-it('only disconnects the authenticated users bluesky account', function () {
-    $user = User::factory()->create();
-    $other = User::factory()->create();
-    SocialAccount::factory()->create(['user_id' => $user->id, 'provider' => 'bluesky']);
-    $othersAccount = SocialAccount::factory()->create(['user_id' => $other->id, 'provider' => 'bluesky']);
+it('returns validation error on invalid app password during reauth', function () {
+    $user = User::factory()->withPasskey()->create();
+    $account = SocialAccount::factory()->create([
+        'user_id' => $user->id,
+        'provider' => 'bluesky',
+        'instance_url' => 'https://bsky.social',
+        'handle' => '@alice.bsky.social',
+        'auth_failed_at' => now(),
+    ]);
 
-    $this->actingAs($user)->delete('/auth/bluesky');
+    $service = Mockery::mock(BlueskyAuthService::class);
+    $service->shouldReceive('createSession')
+        ->once()
+        ->andThrow(new RequestException(
+            new Illuminate\Http\Client\Response(new Response(401, [], '{}'))
+        ));
+    $this->app->instance(BlueskyAuthService::class, $service);
 
-    $this->assertDatabaseHas('social_accounts', ['id' => $othersAccount->id]);
+    $response = $this->actingAs($user)
+        ->patch("/auth/connections/{$account->id}/bluesky", ['app_password' => 'wrong']); // pragma: allowlist secret
+
+    $response->assertSessionHasErrors('app_password');
+    $account->refresh();
+    expect($account->auth_failed_at)->not->toBeNull();
+});
+
+it('returns 403 when reauth account belongs to a different user', function () {
+    $user = User::factory()->withPasskey()->create();
+    $other = User::factory()->withPasskey()->create();
+    $account = SocialAccount::factory()->create([
+        'user_id' => $other->id,
+        'provider' => 'bluesky',
+        'instance_url' => 'https://bsky.social',
+        'handle' => '@other.bsky.social',
+    ]);
+
+    $response = $this->actingAs($user)
+        ->patch("/auth/connections/{$account->id}/bluesky", ['app_password' => 'xxxx-xxxx']);
+
+    $response->assertForbidden();
+});
+
+it('returns 403 when reauth target is not a bluesky account', function () {
+    $user = User::factory()->withPasskey()->create();
+    $account = SocialAccount::factory()->create([
+        'user_id' => $user->id,
+        'provider' => 'mastodon',
+        'instance_url' => 'https://fosstodon.org',
+        'handle' => '@alice@fosstodon.org',
+    ]);
+
+    $response = $this->actingAs($user)
+        ->patch("/auth/connections/{$account->id}/bluesky", ['app_password' => 'xxxx-xxxx']);
+
+    $response->assertForbidden();
 });

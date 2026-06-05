@@ -21,7 +21,7 @@ interface SocialConnection {
 function BlueskyReauthForm({ connection }: { connection: SocialConnection }) {
     return (
         <div className="space-y-2">
-            <p className="text-sm text-amber-600">
+            <p className="text-amber-600 text-sm">
                 <strong>{connection.handle}</strong> — credentials expired
             </p>
             <Form {...bluesky.update.form(connection)}>
@@ -68,7 +68,7 @@ function BlueskyReauthForm({ connection }: { connection: SocialConnection }) {
 function MastodonReauthForm({ connection }: { connection: SocialConnection }) {
     return (
         <div className="flex items-center justify-between gap-2">
-            <p className="text-sm text-amber-600">
+            <p className="text-amber-600 text-sm">
                 <strong>{connection.handle}</strong> — credentials expired
             </p>
             <div className="flex gap-2">
@@ -124,55 +124,55 @@ export default function Connections({
                 />
 
                 {status === 'mastodon-connected' && (
-                    <div className="text-sm font-medium text-green-600">
+                    <div className="font-medium text-green-600 text-sm">
                         Mastodon account connected.
                     </div>
                 )}
                 {status === 'mastodon-reconnected' && (
-                    <div className="text-sm font-medium text-green-600">
+                    <div className="font-medium text-green-600 text-sm">
                         Mastodon account reconnected.
                     </div>
                 )}
                 {status === 'mastodon-disconnected' && (
-                    <div className="text-sm font-medium text-green-600">
+                    <div className="font-medium text-green-600 text-sm">
                         Mastodon account disconnected.
                     </div>
                 )}
                 {status === 'mastodon-already-connected' && (
-                    <div className="text-sm font-medium text-amber-600">
+                    <div className="font-medium text-amber-600 text-sm">
                         That Mastodon account is already connected.
                     </div>
                 )}
                 {status === 'bluesky-connected' && (
-                    <div className="text-sm font-medium text-green-600">
+                    <div className="font-medium text-green-600 text-sm">
                         Bluesky account connected.
                     </div>
                 )}
                 {status === 'bluesky-reconnected' && (
-                    <div className="text-sm font-medium text-green-600">
+                    <div className="font-medium text-green-600 text-sm">
                         Bluesky account reconnected.
                     </div>
                 )}
                 {status === 'bluesky-disconnected' && (
-                    <div className="text-sm font-medium text-green-600">
+                    <div className="font-medium text-green-600 text-sm">
                         Bluesky account disconnected.
                     </div>
                 )}
                 {status === 'bluesky-already-connected' && (
-                    <div className="text-sm font-medium text-amber-600">
+                    <div className="font-medium text-amber-600 text-sm">
                         That Bluesky account is already connected.
                     </div>
                 )}
 
                 {/* Mastodon */}
                 <div className="rounded-lg border p-6">
-                    <h3 className="mb-4 flex items-center gap-2 text-base font-semibold">
+                    <h3 className="mb-4 flex items-center gap-2 font-semibold text-base">
                         <SiMastodon className="size-4" /> Mastodon
                     </h3>
 
                     {mastodonConnections.length > 0 && (
                         <div className="mb-4">
-                            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            <p className="mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
                                 Connected
                             </p>
                             <ul className="space-y-2">
@@ -188,7 +188,7 @@ export default function Connections({
                                             />
                                         ) : (
                                             <div className="flex items-center justify-between">
-                                                <p className="text-sm text-muted-foreground">
+                                                <p className="text-muted-foreground text-sm">
                                                     <strong>{c.handle}</strong>
                                                     {c.instance_url && (
                                                         <span className="ml-1 text-xs">
@@ -223,7 +223,7 @@ export default function Connections({
                     )}
 
                     <div className="rounded-md border bg-muted/50 p-4">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <p className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
                             Add account
                         </p>
                         <Form
@@ -256,13 +256,13 @@ export default function Connections({
 
                 {/* Bluesky */}
                 <div className="rounded-lg border p-6">
-                    <h3 className="mb-4 flex items-center gap-2 text-base font-semibold">
+                    <h3 className="mb-4 flex items-center gap-2 font-semibold text-base">
                         <SiBluesky className="size-4" /> Bluesky
                     </h3>
 
                     {blueskyConnections.length > 0 && (
                         <div className="mb-4">
-                            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            <p className="mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
                                 Connected
                             </p>
                             <ul className="space-y-2">
@@ -276,7 +276,7 @@ export default function Connections({
                                             <BlueskyReauthForm connection={c} />
                                         ) : (
                                             <div className="flex items-center justify-between">
-                                                <p className="text-sm text-muted-foreground">
+                                                <p className="text-muted-foreground text-sm">
                                                     <strong>{c.handle}</strong>
                                                 </p>
                                                 <Form
@@ -306,7 +306,7 @@ export default function Connections({
                     )}
 
                     <div className="rounded-md border bg-muted/50 p-4">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <p className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
                             Add account
                         </p>
                         <Form {...bluesky.store.form()} className="space-y-3">
@@ -336,7 +336,7 @@ export default function Connections({
                                         <InputError
                                             message={errors.app_password}
                                         />
-                                        <p className="text-xs text-muted-foreground">
+                                        <p className="text-muted-foreground text-xs">
                                             Generate one at Settings &rarr;
                                             Privacy and Security &rarr; App
                                             Passwords in Bluesky.
@@ -345,7 +345,7 @@ export default function Connections({
                                     <div className="space-y-1">
                                         <Label htmlFor="pds_url">
                                             PDS URL{' '}
-                                            <span className="text-xs font-normal text-muted-foreground">
+                                            <span className="font-normal text-muted-foreground text-xs">
                                                 (optional — leave blank for
                                                 bsky.social)
                                             </span>

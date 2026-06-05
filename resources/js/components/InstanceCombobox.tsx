@@ -80,7 +80,7 @@ export default function InstanceCombobox({
                         id={id}
                         placeholder={placeholder}
                         autoComplete="off"
-                        className="border-input placeholder:text-muted-foreground focus-visible:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1"
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         onChange={(e) => {
                             const newVal = e.target.value;
 
@@ -93,16 +93,16 @@ export default function InstanceCombobox({
                         }}
                     />
                     {loading && (
-                        <Loader2 className="text-muted-foreground absolute right-2 top-2 size-4 animate-spin" />
+                        <Loader2 className="absolute top-2 right-2 size-4 animate-spin text-muted-foreground" />
                     )}
                 </div>
                 {suggestions.length > 0 && (
-                    <ComboboxOptions className="bg-popover absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border py-1 shadow-md">
+                    <ComboboxOptions className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-popover py-1 shadow-md">
                         {suggestions.map((s) => (
                             <ComboboxOption
                                 key={s.name}
                                 value={s.name}
-                                className="data-[focus]:bg-accent data-[focus]:text-accent-foreground cursor-pointer px-3 py-2 text-sm"
+                                className="cursor-pointer px-3 py-2 text-sm data-[focus]:bg-accent data-[focus]:text-accent-foreground"
                             >
                                 <p className="font-medium">{s.name}</p>
                                 {s.description && (

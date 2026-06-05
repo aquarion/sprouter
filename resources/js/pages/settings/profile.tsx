@@ -73,7 +73,7 @@ export default function Profile({ status }: { status?: string }) {
                             </div>
 
                             {status && (
-                                <p className="text-sm font-medium text-green-600">
+                                <p className="font-medium text-green-600 text-sm">
                                     {status}
                                 </p>
                             )}

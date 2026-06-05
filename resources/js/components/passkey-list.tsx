@@ -40,7 +40,7 @@ export default function PasskeyList({ passkeys }: Props) {
     return (
         <div className="space-y-4">
             {passkeys.length === 0 && (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                     No passkeys registered yet.
                 </p>
             )}
@@ -54,8 +54,8 @@ export default function PasskeyList({ passkeys }: Props) {
                         <div className="flex items-center gap-3">
                             <KeyRound className="h-4 w-4 text-muted-foreground" />
                             <div>
-                                <p className="text-sm font-medium">{pk.name}</p>
-                                <p className="text-xs text-muted-foreground">
+                                <p className="font-medium text-sm">{pk.name}</p>
+                                <p className="text-muted-foreground text-xs">
                                     {pk.last_used_at
                                         ? `Last used ${new Date(pk.last_used_at).toLocaleDateString()}`
                                         : `Added ${new Date(pk.created_at).toLocaleDateString()}`}
@@ -117,7 +117,7 @@ export default function PasskeyList({ passkeys }: Props) {
                     </Button>
                 ))}
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-destructive text-sm">{error}</p>}
         </div>
     );
 }

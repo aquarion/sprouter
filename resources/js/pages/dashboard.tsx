@@ -16,7 +16,7 @@ export default function Dashboard() {
             <Head title="Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="px-1 py-4">
-                    <h1 className="text-2xl font-bold tracking-tight">
+                    <h1 className="font-bold text-2xl tracking-tight">
                         Welcome to Bloom
                     </h1>
                     <p className="mt-1 text-muted-foreground">

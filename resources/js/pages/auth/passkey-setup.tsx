@@ -30,17 +30,17 @@ export default function PasskeySetup({ status }: Props) {
                 <KeyRound className="h-12 w-12 text-primary" />
 
                 <div className="space-y-2">
-                    <h1 className="text-2xl font-semibold">
+                    <h1 className="font-semibold text-2xl">
                         {isRecovery ? 'Add a new passkey' : 'Set up a passkey'}
                     </h1>
-                    <p className="max-w-sm text-sm text-muted-foreground">
+                    <p className="max-w-sm text-muted-foreground text-sm">
                         {isRecovery
                             ? 'Your recovery link was verified. Add a passkey to regain access to your account.'
                             : 'Passkeys let you sign in with your fingerprint, face, or device PIN. You must add a passkey to access your account.'}
                     </p>
                 </div>
 
-                {error && <p className="text-sm text-destructive">{error}</p>}
+                {error && <p className="text-destructive text-sm">{error}</p>}
 
                 {isSupported ? (
                     <Button
@@ -56,7 +56,7 @@ export default function PasskeySetup({ status }: Props) {
                         {loading ? 'Setting up…' : 'Set up passkey'}
                     </Button>
                 ) : (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-muted-foreground text-sm">
                         Your browser does not support passkeys. Please use a
                         modern browser.
                     </p>

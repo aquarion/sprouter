@@ -9,7 +9,7 @@ export default function RecoverInvalid() {
             <Head title="Link expired" />
             <div className="flex flex-col items-center gap-4 text-center">
                 <XCircle className="h-12 w-12 text-destructive" />
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                     This recovery link has expired or already been used.
                 </p>
                 <TextLink href={recover()}>

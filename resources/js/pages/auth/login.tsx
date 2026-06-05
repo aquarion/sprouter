@@ -52,7 +52,7 @@ export default function Login({ status }: Props) {
                         Sign in with passkey
                     </Button>
                 ) : (
-                    <p className="text-center text-sm text-muted-foreground">
+                    <p className="text-center text-muted-foreground text-sm">
                         Your browser does not support passkeys. Please use a
                         modern browser.
                     </p>
@@ -61,19 +61,19 @@ export default function Login({ status }: Props) {
                 {passkeyError && <InputError message={passkeyError} />}
 
                 {status && (
-                    <p className="text-center text-sm font-medium text-green-600">
+                    <p className="text-center font-medium text-green-600 text-sm">
                         {status}
                     </p>
                 )}
 
-                <div className="text-center text-sm text-muted-foreground">
+                <div className="text-center text-muted-foreground text-sm">
                     Don't have an account?{' '}
                     <TextLink href={register()} tabIndex={0}>
                         Sign up
                     </TextLink>
                 </div>
 
-                <div className="text-center text-sm text-muted-foreground">
+                <div className="text-center text-muted-foreground text-sm">
                     <TextLink href={recoverUrl()} tabIndex={0}>
                         Lost your passkey?
                     </TextLink>

@@ -85,7 +85,7 @@ export function AppSidebar() {
             <SidebarFooter>
                 <NavFooter items={footerNavItems} className="mt-auto" />
                 {appVersion && (
-                    <div className="group-data-[collapsible=icon]:hidden px-3 pb-1 text-xs text-neutral-500 dark:text-neutral-400">
+                    <div className="px-3 pb-1 text-neutral-500 text-xs group-data-[collapsible=icon]:hidden dark:text-neutral-400">
                         {appVersion.url ? (
                             <a
                                 href={appVersion.url}

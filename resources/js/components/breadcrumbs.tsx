@@ -24,7 +24,7 @@ export function Breadcrumbs({
                             const isLast = index === breadcrumbs.length - 1;
 
                             return (
-                                <Fragment key={item.href}>
+                                <Fragment key={item.title}>
                                     <BreadcrumbItem>
                                         {isLast ? (
                                             <BreadcrumbPage>

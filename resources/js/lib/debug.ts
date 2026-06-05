@@ -32,7 +32,7 @@ export function setupDebugWindow() {
 
             if (!store) {
                 console.warn(
-                    'Feed store not initialized. Make sure you call setupFeedDebug() from Feed.tsx',
+                    'Feed store not initialized. Make sure you call registerFeedDebug() from Feed.tsx',
                 );
 
                 return;

@@ -13,4 +13,5 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    secrets: inherit # pragma: allowlist secret
+    secrets:
+      REBASE_TOKEN: ${{ secrets.REBASE_TOKEN }}

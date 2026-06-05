@@ -152,7 +152,7 @@ jobs:
               fi
               if [ "$i" -eq 30 ]; then
                 echo "ERROR: Container failed to become ready after 30 attempts"
-                echo "--- Final health check output ---"
+                echo "--- Final readiness check output ---"
                 docker compose exec -T app php artisan --version || true
                 docker compose logs --tail=50 app
                 exit 1

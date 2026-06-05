@@ -90,7 +90,10 @@ jobs:
               --title "chore: bump dependencies" \
               --body "Automated dependency updates"
           fi
-          gh pr ready dependabot-updates
+          PR_IS_DRAFT=$(gh pr view dependabot-updates --json isDraft --jq '.isDraft' 2>/dev/null || echo "false")
+          if [ "$PR_IS_DRAFT" = "true" ]; then
+            gh pr ready dependabot-updates
+          fi
           gh pr checks dependabot-updates --watch --fail-fast
           gh pr merge dependabot-updates --merge
 

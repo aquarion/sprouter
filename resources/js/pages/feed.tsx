@@ -4,6 +4,7 @@ import { Pause, Play } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Attribution } from '@/components/feed/Attribution';
+import { DebugPanel } from '@/components/feed/DebugPanel';
 import { PostBackground } from '@/components/feed/PostBackground';
 import { PostContent } from '@/components/feed/PostContent';
 import { ProgressBar } from '@/components/feed/ProgressBar';
@@ -180,6 +181,9 @@ export default function Feed({
                                 />
                             </svg>
                         </Link>
+                        {debugEnabled && (
+                            <DebugPanel current={current} queue={queue} />
+                        )}
                         <SourceBadge post={current} />
                     </div>
 

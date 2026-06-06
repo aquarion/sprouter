@@ -106,8 +106,9 @@ it('deduplicates posts already in the queue and the current post when new batch 
     expect(ids).toEqual(['1', '2', '3']);
 });
 
-it('merges incoming posts in descending created_at order', async () => {
-    // "mid" is current, "old" is in queue — "new" should sort to the front of the queue
+it('appends incoming posts after existing queue to avoid skipping buffered posts', async () => {
+    // "mid" is current, "old" is in queue — "new" (newer timestamp) should be
+    // appended after "old" so buffered posts are never skipped.
     const posts = [
         makePost('mid', '2026-06-01T10:00:00Z'),
         makePost('old', '2026-06-01T09:00:00Z'),
@@ -126,7 +127,7 @@ it('merges incoming posts in descending created_at order', async () => {
 
     await waitFor(() => expect(result.current.queue).toHaveLength(2));
 
-    expect(result.current.queue.map((p) => p.id)).toEqual(['new', 'old']);
+    expect(result.current.queue.map((p) => p.id)).toEqual(['old', 'new']);
 });
 
 it('redirects to login when feed refill gets unauthenticated', async () => {

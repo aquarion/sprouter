@@ -1,4 +1,9 @@
 {
     "glyph": "resources/branding/noun-bloom-5179258-FFFFFF.svg",
-    "backgroundColor": "#6A2AAC"
+    "backgroundColor": "#6A2AAC",
+    "backgroundColors": {
+        "development": "#CC0000",
+        "staging": "#CC7700",
+        "production": "#6A2AAC"
+    }
 }

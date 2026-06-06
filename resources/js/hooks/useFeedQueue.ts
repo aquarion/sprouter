@@ -23,9 +23,10 @@ function reducer(state: State, action: Action): State {
                 ...(state.current ? [state.current.id] : []),
                 ...state.queue.map((p) => p.id),
             ]);
-            const merged = [
-                ...state.queue,
-                ...action.posts.filter((p) => {
+            // New posts are sorted newest-first among themselves, then appended
+            // after the existing queue so already-buffered posts are never skipped.
+            const incoming = action.posts
+                .filter((p) => {
                     if (seen.has(p.id)) {
                         return false;
                     }
@@ -33,8 +34,9 @@ function reducer(state: State, action: Action): State {
                     seen.add(p.id);
 
                     return true;
-                }),
-            ].sort((a, b) => b.created_at.localeCompare(a.created_at));
+                })
+                .sort((a, b) => b.created_at.localeCompare(a.created_at));
+            const merged = [...state.queue, ...incoming];
 
             // If current drained to null (e.g. fetchMore lagged behind advances),
             // promote the first incoming post automatically.

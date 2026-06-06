@@ -83,20 +83,20 @@ describe('useWakeLock', () => {
             await new Promise((resolve) => setTimeout(resolve, 0));
         });
 
-        // Simulate native browser behavior: screen wake lock is released when tab is hidden
-        if (mockSentinel.onRelease) {
-            act(() => {
-                mockSentinel.onRelease();
-            });
-        }
-
-        mockRequest.mockClear();
-
+        // When the tab becomes hidden, the hook should proactively release the wake lock
         Object.defineProperty(document, 'visibilityState', {
             configurable: true,
             value: 'hidden',
         });
         document.dispatchEvent(new Event('visibilitychange'));
+
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+
+        expect(mockRelease).toHaveBeenCalledOnce();
+
+        mockRequest.mockClear();
 
         Object.defineProperty(document, 'visibilityState', {
             configurable: true,
@@ -107,7 +107,6 @@ describe('useWakeLock', () => {
         await act(async () => {
             await new Promise((resolve) => setTimeout(resolve, 0));
         });
-
         expect(mockRequest).toHaveBeenCalledWith('screen');
     });
 

@@ -120,4 +120,28 @@ describe('useWakeLock', () => {
         expect(result.current.isSupported).toBe(false);
         expect(result.current.isActive).toBe(false);
     });
+
+    it('releases a late-resolving sentinel if hook unmounts before request() resolves', async () => {
+        // Create a deferred promise so we control when request() resolves
+        let resolveRequest!: (sentinel: any) => void;
+        mockRequest.mockReturnValue(
+            new Promise((resolve) => {
+                resolveRequest = resolve;
+            }),
+        );
+
+        const { unmount } = renderHook(() => useWakeLock());
+
+        // Unmount before the request resolves
+        unmount();
+
+        // Now resolve the request — the hook should release the sentinel
+        // immediately since it's no longer mounted
+        await act(async () => {
+            resolveRequest(mockSentinel);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+
+        expect(mockRelease).toHaveBeenCalledOnce();
+    });
 });

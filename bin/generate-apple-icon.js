@@ -159,7 +159,7 @@ continue;
     }
 
     // Inner edge glow: Apple's squircle has a ~20px bright specular highlight along
-    // all edges, strongest at the curved corners (more curvature → stronger glow).
+    // all edges, clipped to the squircle boundary.
     // feMorphology erode creates a border ring; Gaussian blur softens it inward.
     const edgeGlowSvg = `
         <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
@@ -169,7 +169,8 @@ continue;
                     <feComposite in="SourceAlpha" in2="eroded" operator="arithmetic" k2="1" k3="-1" result="ring" />
                     <feGaussianBlur in="ring" stdDeviation="7" result="soft" />
                     <feFlood flood-color="white" flood-opacity="0.6" result="white" />
-                    <feComposite in="white" in2="soft" operator="in" />
+                    <feComposite in="white" in2="soft" operator="in" result="glow" />
+                    <feComposite in="glow" in2="SourceAlpha" operator="in" />
                 </filter>
             </defs>
             <path d="${generateSquirclePath(size, 5)}" fill="white" filter="url(#edgeGlow)" />
@@ -177,6 +178,27 @@ continue;
     `;
     const edgeGlow = await sharp(Buffer.from(edgeGlowSvg)).png().toBuffer();
     composites.push({ input: edgeGlow, top: 0, left: 0 });
+
+    // Directional corner specular: Apple's TL corner has a stronger, crisper highlight.
+    // surfaceScale=51 compensates for librsvg normalising bump gradients by 255.
+    // Low lz=80 makes n=(0,0,1) interior near-zero; outward TL corner normals align
+    // with the light, creating a crisp highlight that zeroes out at TR/BR corners.
+    const cornerSpecSvg = `
+        <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+            <defs>
+                <filter id="cornerSpec" x="0%" y="0%" width="100%" height="100%">
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="12" result="bump" />
+                    <feSpecularLighting in="bump" surfaceScale="51" specularConstant="0.65" specularExponent="8" lighting-color="white" result="spec">
+                        <fePointLight x="-100" y="-100" z="80" />
+                    </feSpecularLighting>
+                    <feComposite in="spec" in2="SourceAlpha" operator="in" />
+                </filter>
+            </defs>
+            <path d="${generateSquirclePath(size, 5)}" fill="white" filter="url(#cornerSpec)" />
+        </svg>
+    `;
+    const cornerSpec = await sharp(Buffer.from(cornerSpecSvg)).png().toBuffer();
+    composites.push({ input: cornerSpec, top: 0, left: 0 });
 
     await sharp({
         create: { width: size, height: size, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } }

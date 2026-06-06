@@ -71,11 +71,14 @@ export function useWakeLock() {
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
                 requestWakeLock();
+            } else {
+                releaseWakeLock();
             }
         };
 
-        requestWakeLock();
-
+        if (document.visibilityState === 'visible') {
+            requestWakeLock();
+        }
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {

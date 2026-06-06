@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compensateForAppleRender, hexToDisplayP3, hexToRgb } from './colors.js';
+import { compensateForAppleRender, hexToDisplayP3, hexToRgb, p3StringToAppleRgb } from './colors.js';
 
 describe('hexToRgb', () => {
     it('parses a hex string into RGB channel values', () => {
@@ -29,5 +29,12 @@ describe('compensateForAppleRender', () => {
     it('leaves black and white unaffected', () => {
         expect(compensateForAppleRender('#000000')).toBe('#000000');
         expect(compensateForAppleRender('#FFFFFF')).toBe('#FFFFFF');
+    });
+});
+
+describe('p3StringToAppleRgb', () => {
+    it('treats P3 components as sRGB matching Apple icon tool quirk', () => {
+        // display-p3:0.37790,0.12750,0.64098 -> rgb(96, 33, 163) not rgb(176, 96, 216)
+        expect(p3StringToAppleRgb('display-p3:0.37790,0.12750,0.64098,1.00000')).toEqual([96, 33, 163]);
     });
 });

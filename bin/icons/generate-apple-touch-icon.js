@@ -2,7 +2,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
-import { compensateForAppleRender, hexToDisplayP3, hexToRgb } from './colors.js';
+import { compensateForAppleRender, hexToDisplayP3, p3StringToAppleRgb } from './colors.js';
 import { generateSquirclePath } from './squircle.js';
 
 const ICON_DIR = 'resources/branding/bloom.icon';
@@ -163,8 +163,10 @@ async function cornerSpecularLayer() {
 
 export async function generateAppleTouchIcon(config, outputDir = DEFAULT_OUTPUT_DIR) {
     const compensatedHex = compensateForAppleRender(config.backgroundColor);
-    const rgb = hexToRgb(compensatedHex);
     const iconData = await syncIconJsonGradient(compensatedHex);
+    // Replicate Apple's icon tool quirk: P3 components are stored in the sRGB
+    // container without gamut conversion, so we read them back the same way.
+    const rgb = p3StringToAppleRgb(iconData.fill['automatic-gradient']);
 
     const composites = [{ input: await backgroundLayer(rgb), top: 0, left: 0 }];
 

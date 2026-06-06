@@ -56,3 +56,16 @@ export function compensateForAppleRender(hex) {
 
     return rgbToHex(compensated);
 }
+
+// Apple's icon tool stores gamma-encoded P3 components directly in the sRGB
+// container without gamut conversion. This replicates that quirk so the
+// background color used for icon rendering matches the old pipeline exactly.
+export function p3StringToAppleRgb(p3Str) {
+    const match = p3Str.match(/display-p3:([\d.]+),([\d.]+),([\d.]+)/);
+
+    if (!match) {
+        throw new Error(`p3StringToAppleRgb: cannot parse "${p3Str}"`);
+    }
+
+    return [match[1], match[2], match[3]].map((v) => Math.round(Number(v) * 255));
+}

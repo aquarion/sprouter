@@ -64,10 +64,24 @@ export function splitIntoLinesWithBoundaries(text: string): {
     lines: string[];
     paragraphStarts: Set<number>;
 } {
-    const paragraphs = text.split('\n').filter(Boolean);
+    let paragraphs = text.split('\n').filter(Boolean);
 
     if (paragraphs.length === 0) {
         return { lines: [], paragraphStarts: new Set() };
+    }
+
+    // Single-paragraph posts are split on ". " so each sentence becomes its
+    // own visual unit, giving the balancer more structure to work with.
+    // ". " (not just ".") avoids triggering on ellipsis like "...".
+    if (paragraphs.length === 1) {
+        const sentences = paragraphs[0]
+            .replace(/\. /g, '.\n')
+            .split('\n')
+            .filter(Boolean);
+
+        if (sentences.length > 1) {
+            paragraphs = sentences;
+        }
     }
 
     // Single-paragraph posts keep the minimum-2-lines visual balance.

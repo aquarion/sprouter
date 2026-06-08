@@ -71,6 +71,18 @@ function PostRow({ post, isCurrent }: { post: Post; isCurrent: boolean }) {
                         {post.body}
                     </p>
                 )}
+                {post.hashtags.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                        {post.hashtags.map((tag) => (
+                            <span
+                                key={tag}
+                                className="rounded bg-white/10 px-1 py-0.5 text-[10px] text-white/50"
+                            >
+                                #{tag}
+                            </span>
+                        ))}
+                    </div>
+                )}
                 <div className="mt-1.5 flex items-center gap-2 text-white/30">
                     {post.media.length > 0 && (
                         <span className="flex items-center gap-0.5 text-[10px]">

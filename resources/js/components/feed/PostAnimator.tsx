@@ -289,11 +289,18 @@ export function PostAnimator({
             return;
         }
 
-        // Apply highlight colour to the longest word — must happen after SplitText
+        // Apply highlight colour to the longest content word — must happen after SplitText
         // rewrites the DOM, as it strips any inline colour spans.
+        // Exclude @mentions and #hashtags (which are stripped from body but may appear
+        // in posts that haven't been re-fetched since the hashtag-strip was deployed).
         const highlight =
             colors?.highlight ?? postColors(post.author_handle).highlight;
-        const longestEl = [...split.words].reduce((a, b) =>
+        const contentWords = [...split.words].filter(
+            (w) => !/^[@#]/.test(w.textContent ?? ''),
+        );
+        const wordPool =
+            contentWords.length > 0 ? contentWords : [...split.words];
+        const longestEl = wordPool.reduce((a, b) =>
             (b.textContent?.length ?? 0) > (a.textContent?.length ?? 0) ? b : a,
         );
         gsap.set(longestEl, { color: highlight });

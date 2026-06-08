@@ -301,7 +301,9 @@ export function PostAnimator({
         const wordPool =
             contentWords.length > 0 ? contentWords : [...split.words];
         const longestEl = wordPool.reduce((a, b) =>
-            (b.textContent?.length ?? 0) > (a.textContent?.length ?? 0) ? b : a,
+            (a.textContent?.length ?? 0) >= (b.textContent?.length ?? 0)
+                ? a
+                : b,
         );
         gsap.set(longestEl, { color: highlight });
 

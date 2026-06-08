@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 export function useWakeLock() {
     const [isActive, setIsActive] = useState(false);
+    const [enabled, setEnabled] = useState(true);
     const sentinelRef = useRef<any>(null);
     const mountedRef = useRef(true);
 
@@ -13,11 +14,11 @@ export function useWakeLock() {
         }
 
         async function requestWakeLock() {
-            try {
-                if (sentinelRef.current) {
-                    return;
-                }
+            if (!enabled || sentinelRef.current) {
+                return;
+            }
 
+            try {
                 const sentinel = await navigator.wakeLock.request('screen');
 
                 // If the hook has unmounted while the request was in flight,
@@ -53,18 +54,22 @@ export function useWakeLock() {
         }
 
         async function releaseWakeLock() {
-            if (sentinelRef.current) {
-                try {
-                    await sentinelRef.current.release();
-                } catch (err) {
-                    console.warn('Failed to release screen wake lock:', err);
-                }
+            const sentinel = sentinelRef.current;
 
-                sentinelRef.current = null;
+            if (!sentinel) {
+                return;
+            }
 
-                if (mountedRef.current) {
-                    setIsActive(false);
-                }
+            sentinelRef.current = null;
+
+            try {
+                await sentinel.release();
+            } catch (err) {
+                console.warn('Failed to release screen wake lock:', err);
+            }
+
+            if (mountedRef.current) {
+                setIsActive(false);
             }
         }
 
@@ -76,9 +81,12 @@ export function useWakeLock() {
             }
         };
 
-        if (document.visibilityState === 'visible') {
+        if (enabled && document.visibilityState === 'visible') {
             requestWakeLock();
+        } else if (!enabled) {
+            releaseWakeLock();
         }
+
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {
@@ -89,10 +97,11 @@ export function useWakeLock() {
             );
             releaseWakeLock();
         };
-    }, []);
+    }, [enabled]);
 
     return {
         isSupported: 'wakeLock' in navigator,
         isActive,
+        toggle: () => setEnabled((e) => !e),
     };
 }

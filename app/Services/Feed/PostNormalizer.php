@@ -76,7 +76,7 @@ class PostNormalizer
         $externalData = $this->blueskyExternalData($post['embed'] ?? null);
         $linkUrl = $externalData['url'] ?? $this->extractFirstLink($record['text']);
 
-        preg_match_all('/#([a-zA-Z0-9_]+)/', $record['text'] ?? '', $tagMatches);
+        preg_match_all('/#([\p{L}\p{N}_]+)/u', $record['text'] ?? '', $tagMatches);
         $hashtags = array_values(array_map('strtolower', $tagMatches[1]));
 
         return [
@@ -281,7 +281,7 @@ class PostNormalizer
 
     private function stripHashtags(string $text): string
     {
-        $stripped = preg_replace('/#[a-zA-Z0-9_]+/', '', $text);
+        $stripped = preg_replace('/#[\p{L}\p{N}_]+/u', '', $text);
         $stripped = preg_replace('/\n{3,}/', "\n\n", $stripped);
 
         return trim(preg_replace('/[ \t]{2,}/', ' ', $stripped));

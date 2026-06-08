@@ -52,6 +52,10 @@ class PostNormalizer
             'boosted_by_handle' => $boosterAccount ? '@'.$boosterAccount['acct'] : null,
             'boosted_by_created_at' => $boosterAccount ? ($status['created_at'] ?? null) : null,
             'emojis' => $emojis,
+            'hashtags' => array_values(array_unique(array_map(
+                fn ($t) => mb_strtolower($t['name'] ?? '', 'UTF-8'),
+                $source['tags'] ?? []
+            ))),
         ];
     }
 
@@ -69,8 +73,15 @@ class PostNormalizer
             ? ($repostBy['displayName'] ?? $repostBy['handle'] ?? null)
             : null;
 
+        $text = $record['text'] ?? '';
         $externalData = $this->blueskyExternalData($post['embed'] ?? null);
-        $linkUrl = $externalData['url'] ?? $this->extractFirstLink($record['text']);
+        $linkUrl = $externalData['url'] ?? $this->extractFirstLink($text);
+
+        preg_match_all('/#([\p{L}\p{N}_]+)/u', $text, $tagMatches);
+        $hashtags = array_values(array_unique(array_map(
+            fn ($t) => mb_strtolower($t, 'UTF-8'),
+            $tagMatches[1]
+        )));
 
         return [
             'id' => "bluesky_{$post['uri']}",
@@ -80,7 +91,7 @@ class PostNormalizer
             'author_handle' => '@'.$author['handle'],
             'author_avatar' => $this->safeUrl($author['avatar'] ?? ''),
             'author_banner' => $this->safeUrl($author['banner'] ?? '') ?: null,
-            'body' => $this->truncateBody($this->stripUrls($record['text']), config('feed.body_limit', 1024)),
+            'body' => $this->truncateBody($this->stripHashtags($this->stripUrls($text)), config('feed.body_limit', 1024)),
             'media' => $this->normaliseBlueskyMedia($post['embed'] ?? null),
             'created_at' => $record['createdAt'],
             'original_url' => $this->blueskyPostUrl($author['handle'], $post['uri']),
@@ -94,6 +105,7 @@ class PostNormalizer
             'boosted_by_handle' => $repostBy ? '@'.($repostBy['handle'] ?? '') : null,
             'boosted_by_created_at' => $repostBy ? ($reason['indexedAt'] ?? null) : null,
             'emojis' => [],
+            'hashtags' => $hashtags,
         ];
     }
 
@@ -254,23 +266,57 @@ class PostNormalizer
         $text = html_entity_decode(strip_tags($withBreaks), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $text = preg_replace('/\n{3,}/', "\n\n", $text);
 
-        return $this->stripUrls(trim($text));
+        return $this->stripHashtags($this->stripUrls(trim($text)));
     }
 
     private function stripUrls(string $text): string
     {
-        $stripped = preg_replace('/https?:\/\/\S+/', '', $text);
+        $stripped = preg_replace(
+            [
+                '/https?:\/\/\S+/',
+                '/(?<![.@\w])[a-zA-Z][a-zA-Z0-9-]*(?:\.[a-zA-Z0-9][a-zA-Z0-9-]*)+\/\S+/',
+            ],
+            '',
+            $text
+        );
 
-        return trim(preg_replace('/[ \t]{2,}/', ' ', $stripped));
+        if ($stripped === null) {
+            return $text;
+        }
+
+        return trim(preg_replace('/[ \t]{2,}/', ' ', $stripped) ?? $stripped);
+    }
+
+    private function stripHashtags(string $text): string
+    {
+        $stripped = preg_replace('/#[\p{L}\p{N}_]+/u', '', $text);
+
+        if ($stripped === null) {
+            return $text;
+        }
+
+        $stripped = preg_replace('/\n{3,}/', "\n\n", $stripped) ?? $stripped;
+
+        return trim(preg_replace('/[ \t]{2,}/', ' ', $stripped) ?? $stripped);
     }
 
     private function extractFirstLink(string $text): ?string
     {
-        preg_match('/https?:\/\/\S+/', $text, $m);
-        if (! isset($m[0])) {
+        $result = preg_match(
+            '/(?:https?:\/\/\S+|(?<![.@\w])[a-zA-Z][a-zA-Z0-9-]*(?:\.[a-zA-Z0-9][a-zA-Z0-9-]*)+\/\S+)/',
+            $text,
+            $m
+        );
+
+        if (! $result) {
             return null;
         }
+
         $url = rtrim($m[0], '.,;!?)>');
+
+        if (! str_starts_with($url, 'http')) {
+            $url = 'https://'.$url;
+        }
 
         return $this->safeUrl($url) ?: null;
     }

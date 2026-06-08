@@ -5,7 +5,12 @@ export const arc: AnimationTemplate = (tl, words) => {
         return;
     }
 
-    const longest = [...words].reduce((a, b) =>
+    const contentWords = [...words].filter(
+        (w) => !/^[@#]/.test(w.textContent ?? ''),
+    );
+    const wordPool = contentWords.length > 0 ? contentWords : words;
+
+    const longest = wordPool.reduce((a, b) =>
         (a.textContent?.length ?? 0) >= (b.textContent?.length ?? 0) ? a : b,
     );
     const others = words.filter((w) => w !== longest);

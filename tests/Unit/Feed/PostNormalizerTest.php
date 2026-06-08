@@ -1346,3 +1346,227 @@ it('sets quoted_post from inline quote on a boosted mastodon status', function (
 
     expect($post['quoted_post']['author_name'])->toBe('Quoted Author');
 });
+
+it('strips bare domain urls with paths from bluesky post body', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => [
+                'text' => 'Check out fosstodon.org/users/foo for more',
+                '$type' => 'app.bsky.feed.post',
+                'createdAt' => '2024-01-15T10:00:00.000Z',
+            ],
+            'author' => [
+                'handle' => 'alice.bsky.social',
+                'displayName' => 'Alice',
+                'avatar' => '',
+            ],
+            'embed' => null,
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['body'])->toBe('Check out for more')
+        ->and($post['link_url'])->toBe('https://fosstodon.org/users/foo');
+});
+
+it('does not strip version strings that resemble bare urls', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => [
+                'text' => 'Upgraded to version 2.0/stable today',
+                '$type' => 'app.bsky.feed.post',
+                'createdAt' => '2024-01-15T10:00:00.000Z',
+            ],
+            'author' => [
+                'handle' => 'alice.bsky.social',
+                'displayName' => 'Alice',
+                'avatar' => '',
+            ],
+            'embed' => null,
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['body'])->toBe('Upgraded to version 2.0/stable today')
+        ->and($post['link_url'])->toBeNull();
+});
+
+it('strips both url types and extracts whichever appears first in text', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => [
+                'text' => 'See https://example.com and also github.com/foo/bar for details',
+                '$type' => 'app.bsky.feed.post',
+                'createdAt' => '2024-01-15T10:00:00.000Z',
+            ],
+            'author' => [
+                'handle' => 'alice.bsky.social',
+                'displayName' => 'Alice',
+                'avatar' => '',
+            ],
+            'embed' => null,
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['body'])->toBe('See and also for details')
+        ->and($post['link_url'])->toBe('https://example.com');
+});
+
+it('extracts bare domain url when it appears before scheme url in text', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => [
+                'text' => 'See github.com/foo/bar and also https://example.com for details',
+                '$type' => 'app.bsky.feed.post',
+                'createdAt' => '2024-01-15T10:00:00.000Z',
+            ],
+            'author' => [
+                'handle' => 'alice.bsky.social',
+                'displayName' => 'Alice',
+                'avatar' => '',
+            ],
+            'embed' => null,
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['link_url'])->toBe('https://github.com/foo/bar');
+});
+
+it('extracts mastodon hashtags into hashtags array and strips them from body', function () {
+    $status = [
+        'id' => '1',
+        'content' => '<p>Loving the weather today #sunny #outdoors</p>',
+        'created_at' => '2024-01-15T10:00:00.000Z',
+        'url' => 'https://mastodon.example/@user/1',
+        'account' => ['display_name' => 'User', 'acct' => 'user', 'avatar' => ''],
+        'media_attachments' => [],
+        'tags' => [
+            ['name' => 'sunny', 'url' => 'https://mastodon.example/tags/sunny'],
+            ['name' => 'outdoors', 'url' => 'https://mastodon.example/tags/outdoors'],
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'mastodon.example');
+
+    expect($post['hashtags'])->toBe(['sunny', 'outdoors'])
+        ->and($post['body'])->toBe('Loving the weather today');
+});
+
+it('returns empty hashtags array when mastodon post has no tags', function () {
+    $status = [
+        'id' => '1',
+        'content' => '<p>hello world</p>',
+        'created_at' => '2024-01-15T10:00:00.000Z',
+        'url' => 'https://mastodon.example/@user/1',
+        'account' => ['display_name' => 'User', 'acct' => 'user', 'avatar' => ''],
+        'media_attachments' => [],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'mastodon.example');
+
+    expect($post['hashtags'])->toBe([]);
+});
+
+it('extracts bluesky hashtags from post text and strips them from body', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => [
+                'text' => 'Great hike today #hiking #nature',
+                '$type' => 'app.bsky.feed.post',
+                'createdAt' => '2024-01-15T10:00:00.000Z',
+            ],
+            'author' => [
+                'handle' => 'alice.bsky.social',
+                'displayName' => 'Alice',
+                'avatar' => '',
+            ],
+            'embed' => null,
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['hashtags'])->toBe(['hiking', 'nature'])
+        ->and($post['body'])->toBe('Great hike today');
+});
+
+it('lowercases mastodon hashtags', function () {
+    $status = [
+        'id' => '1',
+        'content' => '<p>post #FooBar</p>',
+        'created_at' => '2024-01-15T10:00:00.000Z',
+        'url' => 'https://mastodon.example/@user/1',
+        'account' => ['display_name' => 'User', 'acct' => 'user', 'avatar' => ''],
+        'media_attachments' => [],
+        'tags' => [['name' => 'FooBar', 'url' => 'https://mastodon.example/tags/FooBar']],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'mastodon.example');
+
+    expect($post['hashtags'])->toBe(['foobar'])
+        ->and($post['body'])->toBe('post');
+});
+
+it('lowercases bluesky hashtags', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => [
+                'text' => 'post #FooBar',
+                'createdAt' => '2024-01-15T10:00:00.000Z',
+            ],
+            'author' => ['displayName' => 'Alice', 'handle' => 'alice.bsky.social', 'avatar' => ''],
+            'embed' => null,
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['hashtags'])->toBe(['foobar'])
+        ->and($post['body'])->toBe('post');
+});
+
+it('strips bare domain urls with paths from mastodon post body', function () {
+    $status = [
+        'id' => '1',
+        'content' => '<p>Check out fosstodon.org/users/foo for more</p>',
+        'created_at' => '2024-01-15T10:00:00.000Z',
+        'url' => 'https://mastodon.example/@user/1',
+        'account' => ['display_name' => 'User', 'acct' => 'user', 'avatar' => ''],
+        'media_attachments' => [],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'mastodon.example');
+
+    expect($post['body'])->toBe('Check out for more');
+});
+
+it('collapses blank lines left by stripping a hashtag-only paragraph', function () {
+    $status = [
+        'id' => '1',
+        'content' => '<p>Great post today</p><p>#hiking #nature</p>',
+        'created_at' => '2024-01-15T10:00:00.000Z',
+        'url' => 'https://mastodon.example/@user/1',
+        'account' => ['display_name' => 'User', 'acct' => 'user', 'avatar' => ''],
+        'media_attachments' => [],
+        'tags' => [
+            ['name' => 'hiking', 'url' => 'https://mastodon.example/tags/hiking'],
+            ['name' => 'nature', 'url' => 'https://mastodon.example/tags/nature'],
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromMastodon($status, 'mastodon.example');
+
+    expect($post['body'])->toBe('Great post today');
+});

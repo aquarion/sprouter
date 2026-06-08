@@ -289,12 +289,21 @@ export function PostAnimator({
             return;
         }
 
-        // Apply highlight colour to the longest word — must happen after SplitText
+        // Apply highlight colour to the longest content word — must happen after SplitText
         // rewrites the DOM, as it strips any inline colour spans.
+        // Exclude @mentions and #hashtags (which are stripped from body but may appear
+        // in posts that haven't been re-fetched since the hashtag-strip was deployed).
         const highlight =
             colors?.highlight ?? postColors(post.author_handle).highlight;
-        const longestEl = [...split.words].reduce((a, b) =>
-            (b.textContent?.length ?? 0) > (a.textContent?.length ?? 0) ? b : a,
+        const contentWords = [...split.words].filter(
+            (w) => !/^[@#]/.test(w.textContent ?? ''),
+        );
+        const wordPool =
+            contentWords.length > 0 ? contentWords : [...split.words];
+        const longestEl = wordPool.reduce((a, b) =>
+            (a.textContent?.length ?? 0) >= (b.textContent?.length ?? 0)
+                ? a
+                : b,
         );
         gsap.set(longestEl, { color: highlight });
 
@@ -419,7 +428,7 @@ export function PostAnimator({
             ref={containerRef}
             className="flex h-full w-full items-center justify-center p-8 text-center"
         >
-            <div className="flex flex-col items-center gap-4">
+            <div className="relative flex flex-col items-center gap-4">
                 {(post.reply_to || post.quoted_post) && (
                     <div ref={panelsRef} className="flex flex-col gap-4">
                         {post.reply_to && (
@@ -484,6 +493,25 @@ export function PostAnimator({
                         title={post.link_title}
                         favicon={post.link_favicon}
                     />
+                )}
+                {post.hashtags.length > 0 && (
+                    <div
+                        aria-hidden="true"
+                        className="absolute top-0 left-full flex h-full flex-col items-center justify-center gap-1 overflow-hidden pl-3"
+                    >
+                        {[...new Set(post.hashtags)].map((tag) => (
+                            <span
+                                key={tag}
+                                className="rounded-full bg-white/10 px-1.5 py-1.5 text-sm"
+                                style={{
+                                    color: textColor,
+                                    writingMode: 'vertical-rl',
+                                }}
+                            >
+                                #{tag}
+                            </span>
+                        ))}
+                    </div>
                 )}
             </div>
         </div>

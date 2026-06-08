@@ -1395,7 +1395,7 @@ it('does not strip version strings that resemble bare urls', function () {
         ->and($post['link_url'])->toBeNull();
 });
 
-it('strips bare domain url alongside scheme url and extracts scheme url first', function () {
+it('strips both url types and extracts whichever appears first in text', function () {
     $feedPost = [
         'post' => [
             'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
@@ -1417,4 +1417,27 @@ it('strips bare domain url alongside scheme url and extracts scheme url first', 
 
     expect($post['body'])->toBe('See and also for details')
         ->and($post['link_url'])->toBe('https://example.com');
+});
+
+it('extracts bare domain url when it appears before scheme url in text', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => [
+                'text' => 'See github.com/foo/bar and also https://example.com for details',
+                '$type' => 'app.bsky.feed.post',
+                'createdAt' => '2024-01-15T10:00:00.000Z',
+            ],
+            'author' => [
+                'handle' => 'alice.bsky.social',
+                'displayName' => 'Alice',
+                'avatar' => '',
+            ],
+            'embed' => null,
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['link_url'])->toBe('https://github.com/foo/bar');
 });

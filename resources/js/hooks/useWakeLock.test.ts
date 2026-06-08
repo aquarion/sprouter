@@ -120,6 +120,85 @@ describe('useWakeLock', () => {
         expect(result.current.isActive).toBe(false);
     });
 
+    it('toggle disables the wake lock and releases the sentinel', async () => {
+        const { result } = renderHook(() => useWakeLock());
+
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+
+        expect(result.current.isActive).toBe(true);
+
+        await act(async () => {
+            result.current.toggle();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+
+        expect(mockRelease).toHaveBeenCalledOnce();
+        expect(result.current.isActive).toBe(false);
+    });
+
+    it('toggle re-enables the wake lock and re-acquires the sentinel', async () => {
+        const { result } = renderHook(() => useWakeLock());
+
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+
+        // Disable
+        await act(async () => {
+            result.current.toggle();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+
+        mockRequest.mockClear();
+
+        // Re-enable
+        await act(async () => {
+            result.current.toggle();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+
+        expect(mockRequest).toHaveBeenCalledWith('screen');
+        expect(result.current.isActive).toBe(true);
+    });
+
+    it('does not re-acquire when disabled and page visibility changes to visible', async () => {
+        const { result } = renderHook(() => useWakeLock());
+
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+
+        // Disable
+        await act(async () => {
+            result.current.toggle();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+
+        mockRequest.mockClear();
+
+        // Simulate tab hide then show
+        Object.defineProperty(document, 'visibilityState', {
+            configurable: true,
+            value: 'hidden',
+        });
+        document.dispatchEvent(new Event('visibilitychange'));
+
+        Object.defineProperty(document, 'visibilityState', {
+            configurable: true,
+            value: 'visible',
+        });
+        document.dispatchEvent(new Event('visibilitychange'));
+
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+
+        expect(mockRequest).not.toHaveBeenCalled();
+        expect(result.current.isActive).toBe(false);
+    });
+
     it('releases a late-resolving sentinel if hook unmounts before request() resolves', async () => {
         // Create a deferred promise so we control when request() resolves
         let resolveRequest!: (sentinel: any) => void;

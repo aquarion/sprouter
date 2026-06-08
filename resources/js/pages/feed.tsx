@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { gsap } from 'gsap';
-import { Pause, Play } from 'lucide-react';
+import { Eye, EyeOff, Pause, Play } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Attribution } from '@/components/feed/Attribution';
@@ -30,7 +30,11 @@ export default function Feed({
     });
     const [paused, setPaused] = useState(false);
 
-    useWakeLock();
+    const {
+        isSupported: wakeLockSupported,
+        isActive: wakeLockActive,
+        toggle: toggleWakeLock,
+    } = useWakeLock();
     const [readyForPostId, setReadyForPostId] = useState<string | null>(null);
     const animationReady = readyForPostId === current?.id;
     const bgRef = useRef<HTMLDivElement>(null);
@@ -181,6 +185,24 @@ export default function Feed({
                                 />
                             </svg>
                         </Link>
+                        {wakeLockSupported && (
+                            <button
+                                type="button"
+                                onClick={toggleWakeLock}
+                                className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white/60 hover:bg-white/20 hover:text-white"
+                                aria-label={
+                                    wakeLockActive
+                                        ? 'Disable keep-awake'
+                                        : 'Enable keep-awake'
+                                }
+                            >
+                                {wakeLockActive ? (
+                                    <Eye className="h-4 w-4" />
+                                ) : (
+                                    <EyeOff className="h-4 w-4" />
+                                )}
+                            </button>
+                        )}
                         {debugEnabled && (
                             <DebugPanel current={current} queue={queue} />
                         )}

@@ -1346,3 +1346,75 @@ it('sets quoted_post from inline quote on a boosted mastodon status', function (
 
     expect($post['quoted_post']['author_name'])->toBe('Quoted Author');
 });
+
+it('strips bare domain urls with paths from bluesky post body', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => [
+                'text' => 'Check out fosstodon.org/users/foo for more',
+                '$type' => 'app.bsky.feed.post',
+                'createdAt' => '2024-01-15T10:00:00.000Z',
+            ],
+            'author' => [
+                'handle' => 'alice.bsky.social',
+                'displayName' => 'Alice',
+                'avatar' => '',
+            ],
+            'embed' => null,
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['body'])->toBe('Check out for more')
+        ->and($post['link_url'])->toBe('https://fosstodon.org/users/foo');
+});
+
+it('does not strip version strings that resemble bare urls', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => [
+                'text' => 'Upgraded to version 2.0/stable today',
+                '$type' => 'app.bsky.feed.post',
+                'createdAt' => '2024-01-15T10:00:00.000Z',
+            ],
+            'author' => [
+                'handle' => 'alice.bsky.social',
+                'displayName' => 'Alice',
+                'avatar' => '',
+            ],
+            'embed' => null,
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['body'])->toBe('Upgraded to version 2.0/stable today')
+        ->and($post['link_url'])->toBeNull();
+});
+
+it('strips bare domain url alongside scheme url and extracts scheme url first', function () {
+    $feedPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => [
+                'text' => 'See https://example.com and also github.com/foo/bar for details',
+                '$type' => 'app.bsky.feed.post',
+                'createdAt' => '2024-01-15T10:00:00.000Z',
+            ],
+            'author' => [
+                'handle' => 'alice.bsky.social',
+                'displayName' => 'Alice',
+                'avatar' => '',
+            ],
+            'embed' => null,
+        ],
+    ];
+
+    $post = (new PostNormalizer)->fromBluesky($feedPost);
+
+    expect($post['body'])->toBe('See and also for details')
+        ->and($post['link_url'])->toBe('https://example.com');
+});

@@ -259,18 +259,33 @@ class PostNormalizer
 
     private function stripUrls(string $text): string
     {
-        $stripped = preg_replace('/https?:\/\/\S+/', '', $text);
+        $stripped = preg_replace(
+            [
+                '/https?:\/\/\S+/',
+                '/(?<![.@\w])[a-zA-Z][a-zA-Z0-9-]*(?:\.[a-zA-Z0-9][a-zA-Z0-9-]*)+\/\S+/',
+            ],
+            '',
+            $text
+        );
 
         return trim(preg_replace('/[ \t]{2,}/', ' ', $stripped));
     }
 
     private function extractFirstLink(string $text): ?string
     {
-        preg_match('/https?:\/\/\S+/', $text, $m);
-        if (! isset($m[0])) {
+        if (! preg_match(
+            '/(?:https?:\/\/\S+|(?<![.@\w])[a-zA-Z][a-zA-Z0-9-]*(?:\.[a-zA-Z0-9][a-zA-Z0-9-]*)+\/\S+)/',
+            $text,
+            $m
+        )) {
             return null;
         }
+
         $url = rtrim($m[0], '.,;!?)>');
+
+        if (! str_starts_with($url, 'http')) {
+            $url = 'https://'.$url;
+        }
 
         return $this->safeUrl($url) ?: null;
     }

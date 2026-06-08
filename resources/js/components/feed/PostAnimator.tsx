@@ -426,9 +426,9 @@ export function PostAnimator({
     return (
         <div
             ref={containerRef}
-            className="relative flex h-full w-full items-center justify-center p-8 text-center"
+            className="flex h-full w-full items-center justify-center p-8 text-center"
         >
-            <div className="flex flex-col items-center gap-4">
+            <div className="relative flex flex-col items-center gap-4">
                 {(post.reply_to || post.quoted_post) && (
                     <div ref={panelsRef} className="flex flex-col gap-4">
                         {post.reply_to && (
@@ -494,23 +494,26 @@ export function PostAnimator({
                         favicon={post.link_favicon}
                     />
                 )}
+                {post.hashtags.length > 0 && (
+                    <div
+                        aria-hidden="true"
+                        className="absolute top-0 left-full flex h-full flex-col items-center justify-center gap-1 overflow-hidden pl-3"
+                    >
+                        {[...new Set(post.hashtags)].map((tag) => (
+                            <span
+                                key={tag}
+                                className="rounded-full bg-white/10 px-1.5 py-1.5 text-[0.55rem]"
+                                style={{
+                                    color: colors?.text ?? 'white',
+                                    writingMode: 'vertical-rl',
+                                }}
+                            >
+                                #{tag}
+                            </span>
+                        ))}
+                    </div>
+                )}
             </div>
-            {post.hashtags.length > 0 && (
-                <div
-                    aria-hidden="true"
-                    className="absolute top-0 right-2 flex h-full flex-col items-center justify-center gap-2 overflow-hidden"
-                >
-                    {[...new Set(post.hashtags)].map((tag) => (
-                        <span
-                            key={tag}
-                            className="rotate-90 whitespace-nowrap rounded-full bg-white/10 px-2 py-0.5 text-[0.6rem]"
-                            style={{ color: colors?.text ?? 'white' }}
-                        >
-                            #{tag}
-                        </span>
-                    ))}
-                </div>
-            )}
         </div>
     );
 }

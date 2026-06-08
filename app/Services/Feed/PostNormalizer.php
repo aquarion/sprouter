@@ -282,6 +282,7 @@ class PostNormalizer
     private function stripHashtags(string $text): string
     {
         $stripped = preg_replace('/#[a-zA-Z0-9_]+/', '', $text);
+        $stripped = preg_replace('/\n{3,}/', "\n\n", $stripped);
 
         return trim(preg_replace('/[ \t]{2,}/', ' ', $stripped));
     }

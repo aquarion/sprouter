@@ -1514,5 +1514,6 @@ it('lowercases mastodon hashtags', function () {
 
     $post = (new PostNormalizer)->fromMastodon($status, 'mastodon.example');
 
-    expect($post['hashtags'])->toBe(['foobar']);
+    expect($post['hashtags'])->toBe(['foobar'])
+        ->and($post['body'])->toBe('post');
 });

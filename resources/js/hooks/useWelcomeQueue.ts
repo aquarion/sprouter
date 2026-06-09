@@ -24,7 +24,7 @@ export function useWelcomeQueue(initialPosts: Post[]) {
         queue: initialPosts.slice(1),
     });
 
-    const advance = useCallback(() => dispatch({ type: 'advance' }), []);
+    const advance = useCallback(() => dispatch(), []);
 
     return { current: state.current, queue: state.queue, advance };
 }

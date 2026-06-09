@@ -1,7 +1,6 @@
 <?php
 
-test('returns a successful response', function () {
-    $response = $this->get(route('home'));
-
-    $response->assertRedirect(route('login'));
+test('home page renders for guests', function () {
+    $response = $this->withoutVite()->get(route('home'));
+    $response->assertOk();
 });

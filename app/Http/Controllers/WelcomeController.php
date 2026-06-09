@@ -64,7 +64,6 @@ class WelcomeController extends Controller
         $statuses = Http::timeout(10)
             ->get("https://{$instance}/api/v1/timelines/public", [
                 'limit' => 10,
-                'only_media' => 'false',
             ])
             ->throw()
             ->json();

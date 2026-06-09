@@ -9,13 +9,11 @@
 
 set -o pipefail
 
-STOPPING=0
 NPM_PID=""
 ARTISAN_PID=""
 REDIS_STARTED=0
 
 cleanup() {
-    STOPPING=1
     echo "Stopping development server..."
     [ -n "$NPM_PID" ] && kill "$NPM_PID" 2>/dev/null
     [ -n "$ARTISAN_PID" ] && kill "$ARTISAN_PID" 2>/dev/null
@@ -25,6 +23,31 @@ cleanup() {
 }
 
 trap cleanup INT TERM
+
+# Start $1 (label) running $2+ (command) in a background subshell that
+# restarts on non-zero exit and stops cleanly on SIGINT/SIGTERM.
+# Echoes the subshell PID to stdout — capture with $().
+start_with_restart() {
+    local label="$1"
+    shift
+    (
+        local inner=""
+        trap 'kill "$inner" 2>/dev/null; exit 0' INT TERM
+        while true; do
+            "$@" &
+            inner=$!
+            wait "$inner"
+            local code=$?
+            # 130 = SIGINT (128+2), 143 = SIGTERM (128+15) — intentional stop
+            if [ "$code" -eq 0 ] || [ "$code" -eq 130 ] || [ "$code" -eq 143 ]; then
+                break
+            fi
+            echo "$label crashed (exit $code), restarting..."
+            sleep 1
+        done
+    ) &
+    echo $!
+}
 
 ############################################################################
 ##### Main script
@@ -73,25 +96,12 @@ done
 echo ""
 
 echo "Starting Laravel development server ..."
-php artisan serve &
-ARTISAN_PID=$!
+ARTISAN_PID=$(start_with_restart "Artisan" php artisan serve)
 
 echo "Starting Vite development server ..."
-while [ "$STOPPING" -eq 0 ]; do
-    npm run dev &
-    NPM_PID=$!
-    wait "$NPM_PID"
-    EXIT_CODE=$?
+NPM_PID=$(start_with_restart "Vite" npm run dev)
 
-    [ "$STOPPING" -eq 1 ] && break
-
-    if [ "$EXIT_CODE" -ne 0 ]; then
-        echo "Vite crashed (exit $EXIT_CODE), restarting..."
-        sleep 1
-    else
-        break
-    fi
-done
+wait "$NPM_PID"
 
 ############################################################################
 ##### Cleanup

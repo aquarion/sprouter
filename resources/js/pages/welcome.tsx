@@ -129,49 +129,52 @@ export default function Welcome({
 
                 {/* Chrome layer */}
                 <div className="pointer-events-none absolute inset-0 z-20 flex flex-col">
-                    <div className="pointer-events-auto flex items-center gap-2 p-4">
-                        <SourceBadge post={current} />
-                    </div>
-
-                    <div className="flex-1" />
-
-                    <div className="pointer-events-auto flex max-w-sm flex-col gap-4 px-4 pt-2 pb-6">
-                        <Attribution post={current} />
-
-                        <div className="border-white/10 border-t pt-4">
-                            <div className="mb-1 flex items-center gap-2">
+                    {/* Top: Bloom CTA centred over a gradient for contrast */}
+                    <div className="bg-gradient-to-b from-black/70 to-transparent">
+                        <div className="pointer-events-auto mx-auto flex max-w-xs flex-col items-center gap-3 px-6 pt-10 pb-8">
+                            <div className="flex items-center gap-2">
                                 <AppLogoIcon
                                     className="size-5"
                                     aria-hidden="true"
                                 />
-                                <span className="font-semibold text-white/50 text-xs uppercase tracking-wide">
+                                <span className="font-semibold text-white/60 text-xs uppercase tracking-widest">
                                     Bloom
                                 </span>
                             </div>
-                            <p className="mb-1 font-semibold text-lg text-white leading-tight">
-                                Social media. Without the scroll.
+                            <p className="text-center font-semibold text-white text-xl leading-tight">
+                                Social media.
+                                <br />
+                                Without the scroll.
                             </p>
-                            <p className="mb-4 text-white/40 text-xs">
+                            <p className="text-center text-white/50 text-xs">
                                 Full-screen · Mastodon &amp; Bluesky · No
                                 algorithm
                             </p>
-                            <div className="flex gap-3">
+                            <div className="mt-1 flex w-full gap-3">
                                 {canRegister && (
                                     <Link
                                         href={register()}
-                                        className="flex-1 rounded-lg bg-white py-3 text-center font-semibold text-black text-sm hover:bg-white/90"
+                                        className="flex-1 rounded-lg bg-white py-2.5 text-center font-semibold text-black text-sm hover:bg-white/90"
                                     >
                                         Sign up
                                     </Link>
                                 )}
                                 <Link
                                     href={login()}
-                                    className="flex-1 rounded-lg border border-white/20 bg-white/10 py-3 text-center font-medium text-sm text-white/80 hover:bg-white/15"
+                                    className="flex-1 rounded-lg border border-white/20 bg-white/10 py-2.5 text-center font-medium text-sm text-white/80 hover:bg-white/15"
                                 >
                                     Log in
                                 </Link>
                             </div>
                         </div>
+                    </div>
+
+                    <div className="flex-1" />
+
+                    {/* Bottom: attribution + source badge */}
+                    <div className="pointer-events-auto flex items-center gap-3 px-4 pt-2 pb-6">
+                        <Attribution post={current} />
+                        <SourceBadge post={current} />
                     </div>
 
                     <ProgressBar progress={progress} />

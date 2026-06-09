@@ -22,4 +22,7 @@ return [
 
     // Maximum characters shown in main post body
     'body_limit' => env('FEED_BODY_LIMIT', 512),
+
+    // Mastodon instance used to fetch posts for the public welcome page
+    'welcome_instance' => env('FEED_WELCOME_INSTANCE', 'mastodon.social'),
 ];

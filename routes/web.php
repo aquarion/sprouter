@@ -5,10 +5,11 @@ use App\Http\Controllers\Auth\PasskeyAuthController;
 use App\Http\Controllers\Auth\PasskeyRecoveryController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\FeedController;
+use App\Http\Controllers\WelcomeController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Vite;
 
-Route::get('/', fn () => redirect()->route(auth()->check() ? 'feed' : 'login'))->name('home');
+Route::get('/', [WelcomeController::class, 'index'])->name('home');
 
 Route::get('site.webmanifest', function () {
     return response()->json([

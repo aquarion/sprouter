@@ -38,7 +38,9 @@ export default function Welcome({
             return;
         }
 
-        // advance() shifts queue[0] → current, so queue[1] becomes the new queue[0].
+        // advance() shifts queue[0] → current and rotates the old current to the end.
+        // queue[1] is therefore the post that will follow next; fall back to queue[0] or
+        // current when the queue is short (single-post case).
         // Capture now (before the queue changes) to update the bottom layer in onComplete.
         const nextNext: Post | null = queue[1] ?? queue[0] ?? current;
 

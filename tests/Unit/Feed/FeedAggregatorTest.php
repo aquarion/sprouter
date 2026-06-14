@@ -609,3 +609,85 @@ it('does not deduplicate similar posts older than 24h apart', function () {
 
     expect($result['posts'])->toHaveCount(2);
 });
+
+it('filters out posts containing muted words', function () {
+    $user = User::factory()->create(['feed_preferences' => [
+        'mute_words' => ['spam', 'giveaway'],
+        'max_age_days' => null,
+    ]]);
+    $account = SocialAccount::factory()->create([
+        'user_id' => $user->id,
+        'provider' => 'mastodon',
+        'instance_url' => 'https://fosstodon.org',
+        'access_token' => 'token',
+        'handle' => '@me@fosstodon.org',
+    ]);
+
+    $makeStatus = fn (string $id, string $body) => [
+        'id' => $id,
+        'created_at' => now()->toIso8601String(),
+        'in_reply_to_id' => null,
+        'url' => "https://fosstodon.org/@author/{$id}",
+        'content' => "<p>{$body}</p>",
+        'spoiler_text' => '',
+        'sensitive' => false,
+        'account' => ['display_name' => 'Author', 'acct' => 'author', 'avatar' => 'https://fosstodon.org/av.png', 'header' => '', 'emojis' => []],
+        'media_attachments' => [],
+        'emojis' => [],
+        'card' => null,
+        'quote' => null,
+        'quote_id' => null,
+        'tags' => [],
+    ];
+
+    $mastodon = Mockery::mock(MastodonFeedService::class);
+    $mastodon->shouldReceive('getHomeTimeline')->andReturn([
+        $makeStatus('1', 'This is a normal post'),
+        $makeStatus('2', 'Win a prize in this GIVEAWAY today'),
+        $makeStatus('3', 'Spam accounts are the worst'),
+    ]);
+    $mastodon->shouldReceive('getStatus')->andReturn(null);
+
+    $aggregator = new FeedAggregator($mastodon, Mockery::mock(BlueskyFeedService::class), app(PostNormalizer::class));
+    $result = $aggregator->fetch($user);
+
+    expect($result['posts'])->toHaveCount(1)
+        ->and($result['posts'][0]['id'])->toBe('mastodon_1');
+});
+
+it('skips mute word check when list is empty', function () {
+    $user = User::factory()->create(['feed_preferences' => ['mute_words' => [], 'max_age_days' => null]]);
+    $account = SocialAccount::factory()->create([
+        'user_id' => $user->id,
+        'provider' => 'mastodon',
+        'instance_url' => 'https://fosstodon.org',
+        'access_token' => 'token',
+        'handle' => '@me@fosstodon.org',
+    ]);
+
+    $status = [
+        'id' => '1',
+        'created_at' => now()->toIso8601String(),
+        'in_reply_to_id' => null,
+        'url' => 'https://fosstodon.org/@author/1',
+        'content' => '<p>Normal post</p>',
+        'spoiler_text' => '',
+        'sensitive' => false,
+        'account' => ['display_name' => 'Author', 'acct' => 'author', 'avatar' => 'https://fosstodon.org/av.png', 'header' => '', 'emojis' => []],
+        'media_attachments' => [],
+        'emojis' => [],
+        'card' => null,
+        'quote' => null,
+        'quote_id' => null,
+        'tags' => [],
+    ];
+
+    $mastodon = Mockery::mock(MastodonFeedService::class);
+    $mastodon->shouldReceive('getHomeTimeline')->andReturn([$status]);
+    $mastodon->shouldReceive('getStatus')->andReturn(null);
+
+    $aggregator = new FeedAggregator($mastodon, Mockery::mock(BlueskyFeedService::class), app(PostNormalizer::class));
+    $result = $aggregator->fetch($user);
+
+    expect($result['posts'])->toHaveCount(1);
+});

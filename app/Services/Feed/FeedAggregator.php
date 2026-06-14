@@ -113,6 +113,9 @@ class FeedAggregator
             return true;
         })->values()->take($bufferSize)->all();
 
+        $muteWords = $user->getPreference('mute_words', []);
+        $deduped = $this->applyMuteWords($deduped, $muteWords);
+
         $nextCursor = ! empty($deduped) ? base64_encode(json_encode($cursors)) : null;
 
         return ['posts' => $deduped, 'next_cursor' => $nextCursor];
@@ -162,6 +165,24 @@ class FeedAggregator
         $text = preg_replace('/[^\p{L}\p{N}\s]/u', '', $text) ?? $text;
 
         return trim(preg_replace('/\s+/u', ' ', $text) ?? $text);
+    }
+
+    private function applyMuteWords(array $posts, array $muteWords): array
+    {
+        if (empty($muteWords)) {
+            return $posts;
+        }
+
+        return array_values(array_filter($posts, function (array $post) use ($muteWords) {
+            $body = mb_strtolower($post['body'], 'UTF-8');
+            foreach ($muteWords as $word) {
+                if (mb_strpos($body, mb_strtolower($word, 'UTF-8')) !== false) {
+                    return false;
+                }
+            }
+
+            return true;
+        }));
     }
 
     private function fetchMastodonStatuses(SocialAccount $account, array $statuses, callable $idExtractor): array

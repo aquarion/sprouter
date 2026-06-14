@@ -166,6 +166,8 @@ export default function Feed({
                     <PostContent
                         post={current}
                         onReady={() => setReadyForPostId(current.id)}
+                        cwBehavior={cwBehavior}
+                        sensitiveMediaBehavior={sensitiveMediaBehavior}
                     />
                 </div>
 

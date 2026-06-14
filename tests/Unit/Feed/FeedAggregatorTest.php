@@ -485,3 +485,127 @@ it('skips age filter when max_age_days is null', function () {
 
     expect($result['posts'])->toHaveCount(1);
 });
+
+it('deduplicates cross-platform posts with similar body within 24h', function () {
+    $user = User::factory()->create(['feed_preferences' => ['max_age_days' => null]]);
+
+    $mastodonAccount = SocialAccount::factory()->create([
+        'user_id' => $user->id,
+        'provider' => 'mastodon',
+        'instance_url' => 'https://fosstodon.org',
+        'access_token' => 'token',
+        'handle' => '@me@fosstodon.org',
+    ]);
+
+    $blueskyAccount = SocialAccount::factory()->create([
+        'user_id' => $user->id,
+        'provider' => 'bluesky',
+        'access_token' => 'token',
+        'handle' => '@me.bsky.social',
+    ]);
+
+    $postTime = now()->toIso8601String();
+
+    $mastodonStatus = [
+        'id' => 'masto1',
+        'created_at' => $postTime,
+        'in_reply_to_id' => null,
+        'url' => 'https://fosstodon.org/@alice/masto1',
+        'content' => '<p>This is a cross-posted message about interesting things happening in the world today.</p>',
+        'spoiler_text' => '',
+        'sensitive' => false,
+        'account' => ['display_name' => 'Alice', 'acct' => 'alice', 'avatar' => 'https://fosstodon.org/av.png', 'header' => '', 'emojis' => []],
+        'media_attachments' => [],
+        'emojis' => [],
+        'card' => null,
+        'quote' => null,
+        'quote_id' => null,
+        'tags' => [],
+    ];
+
+    $blueskyPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz',
+            'record' => [
+                'text' => 'This is a cross-posted message about interesting things happening in the world today.',
+                'createdAt' => $postTime,
+            ],
+            'author' => ['displayName' => 'Alice', 'handle' => 'alice.bsky.social', 'avatar' => 'https://cdn.bsky.app/av.jpg'],
+            'labels' => [],
+            'embed' => null,
+        ],
+    ];
+
+    $mastodon = Mockery::mock(MastodonFeedService::class);
+    $mastodon->shouldReceive('getHomeTimeline')->andReturn([$mastodonStatus]);
+    $mastodon->shouldReceive('getStatus')->andReturn(null);
+
+    $bluesky = Mockery::mock(BlueskyFeedService::class);
+    $bluesky->shouldReceive('getHomeTimeline')->andReturn(['posts' => [$blueskyPost], 'cursor' => null]);
+
+    $aggregator = new FeedAggregator($mastodon, $bluesky, app(PostNormalizer::class));
+    $result = $aggregator->fetch($user);
+
+    expect($result['posts'])->toHaveCount(1);
+});
+
+it('does not deduplicate similar posts older than 24h apart', function () {
+    $user = User::factory()->create(['feed_preferences' => ['max_age_days' => null]]);
+
+    $mastodonAccount = SocialAccount::factory()->create([
+        'user_id' => $user->id,
+        'provider' => 'mastodon',
+        'instance_url' => 'https://fosstodon.org',
+        'access_token' => 'token',
+        'handle' => '@me@fosstodon.org',
+    ]);
+
+    $blueskyAccount = SocialAccount::factory()->create([
+        'user_id' => $user->id,
+        'provider' => 'bluesky',
+        'access_token' => 'token',
+        'handle' => '@me.bsky.social',
+    ]);
+
+    $mastodonStatus = [
+        'id' => 'masto2',
+        'created_at' => now()->toIso8601String(),
+        'in_reply_to_id' => null,
+        'url' => 'https://fosstodon.org/@alice/masto2',
+        'content' => '<p>This is a cross-posted message about interesting things happening in the world today.</p>',
+        'spoiler_text' => '',
+        'sensitive' => false,
+        'account' => ['display_name' => 'Alice', 'acct' => 'alice', 'avatar' => 'https://fosstodon.org/av.png', 'header' => '', 'emojis' => []],
+        'media_attachments' => [],
+        'emojis' => [],
+        'card' => null,
+        'quote' => null,
+        'quote_id' => null,
+        'tags' => [],
+    ];
+
+    $blueskyPost = [
+        'post' => [
+            'uri' => 'at://did:plc:abc/app.bsky.feed.post/xyz2',
+            'record' => [
+                'text' => 'This is a cross-posted message about interesting things happening in the world today.',
+                'createdAt' => now()->subDays(2)->toIso8601String(),
+            ],
+            'author' => ['displayName' => 'Alice', 'handle' => 'alice.bsky.social', 'avatar' => 'https://cdn.bsky.app/av.jpg'],
+            'labels' => [],
+            'embed' => null,
+        ],
+    ];
+
+    $mastodon = Mockery::mock(MastodonFeedService::class);
+    $mastodon->shouldReceive('getHomeTimeline')->andReturn([$mastodonStatus]);
+    $mastodon->shouldReceive('getStatus')->andReturn(null);
+
+    $bluesky = Mockery::mock(BlueskyFeedService::class);
+    $bluesky->shouldReceive('getHomeTimeline')->andReturn(['posts' => [$blueskyPost], 'cursor' => null]);
+
+    $aggregator = new FeedAggregator($mastodon, $bluesky, app(PostNormalizer::class));
+    $result = $aggregator->fetch($user);
+
+    expect($result['posts'])->toHaveCount(2);
+});

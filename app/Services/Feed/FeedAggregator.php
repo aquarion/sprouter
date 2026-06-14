@@ -85,12 +85,30 @@ class FeedAggregator
         $sorted = $posts->sortByDesc('created_at')->values();
 
         $seen = [];
-        $deduped = $sorted->filter(function ($post) use (&$seen) {
+        $seenBodies = [];
+
+        $deduped = $sorted->filter(function ($post) use (&$seen, &$seenBodies) {
+            // URL-based dedup (existing)
             $key = $post['original_url'] ?: $post['id'];
             if (isset($seen[$key])) {
                 return false;
             }
             $seen[$key] = true;
+
+            // Content similarity dedup
+            $normBody = $this->normaliseBodyForDedup($post['body']);
+            if (mb_strlen($normBody, 'UTF-8') >= 30) {
+                $postTime = strtotime($post['created_at']);
+                foreach ($seenBodies as [$existingBody, $existingTime]) {
+                    if (abs($postTime - $existingTime) <= 86400) {
+                        similar_text($normBody, $existingBody, $pct);
+                        if ($pct >= 80.0) {
+                            return false;
+                        }
+                    }
+                }
+                $seenBodies[] = [$normBody, $postTime];
+            }
 
             return true;
         })->values()->take($bufferSize)->all();
@@ -134,6 +152,16 @@ class FeedAggregator
         return array_values(array_filter($posts, function (array $post) use ($cutoff) {
             return $post['boosted_by'] !== null || $post['created_at'] >= $cutoff;
         }));
+    }
+
+    private function normaliseBodyForDedup(string $body): string
+    {
+        $text = mb_strtolower($body, 'UTF-8');
+        $text = preg_replace('/https?:\/\/\S+/u', '', $text) ?? $text;
+        $text = preg_replace('/#[\p{L}\p{N}_]+/u', '', $text) ?? $text;
+        $text = preg_replace('/[^\p{L}\p{N}\s]/u', '', $text) ?? $text;
+
+        return trim(preg_replace('/\s+/u', ' ', $text) ?? $text);
     }
 
     private function fetchMastodonStatuses(SocialAccount $account, array $statuses, callable $idExtractor): array
